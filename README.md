@@ -1,1 +1,1 @@
-# rnd-logbot
+# rnd-lugbot
