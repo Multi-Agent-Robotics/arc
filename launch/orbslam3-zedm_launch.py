@@ -5,7 +5,6 @@ from launch.event_handlers import OnShutdown
 from launch_ros.actions import Node, SetRemap
 from launch_ros.substitutions import FindPackageShare
 
-
 import os
 
 expand = lambda path: os.path.expanduser(path)
@@ -19,43 +18,34 @@ def generate_launch_description() -> LaunchDescription:
         executable="stereo-inertial",
         output='screen',
         arguments=[
-            expand('~/ros2_ws/src/orbslam3/vocabulary/ORBvoc.txt'),
+            # expand('~/ros2_ws/src/orbslam3/vocabulary/ORBvoc.txt'),
+            expand('~/multi-agent-robotics/ORB-SLAM3-STEREO-FIXED/vocabulary/ORBvoc.txt'),
             expand('~/ros2_ws/src/orbslam3/config/stereo-inertial/EuRoC.yaml'), 
             rectify,
             equalize
         ]
     )
 
-    # IncludeLaunchDescription(
-    #     package='orbslam3',
-    #     launch='stereo-inertial',
-    #     arguments=['~/ros2_ws/src/orbslam3/vocabulary/ORBvoc.txt',
-    #                '~/ros2_ws/src/orbslam3/config/stereo-inertial/EuRoC.yaml', 'true']
-    # ),
-
     zedm = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             FindPackageShare("zed_wrapper"), '/launch', '/zedm.launch.py']),
     )
 
-    # zedm = IncludeLaunchDescription(
-    #     package='zed_wrapper',
-    #     launch='zedm.launch.py',
-    #     arguments=[''],
-    #     remappings=[
-    #             ('/zedm/zed_node/left/image_rect_color', '/camera/left'),
-    #             ('/zedm/zed_node/right/image_rect_color', '/camera/right'),
-    #             ('/zedm/zed_node/imu/data', '/imu')
-    #     ]
-    # ),
+    zedm_with_remapped_topics = GroupAction(actions=[
+        SetRemap(src='/zedm/zed_node/left_raw/image_raw_color', dst='/camera/left'),
+        SetRemap(src='/zedm/zed_node/right_raw/image_raw_color', dst='/camera/right'),
+        SetRemap(src='/zedm/zed_node/imu/data', dst='/imu'),
+        zedm
+    ])
 
     return LaunchDescription([
-        GroupAction(actions=[
-            SetRemap(src='/zedm/zed_node/left_raw/image_raw_color', dst='/camera/left'),
-            SetRemap(src='/zedm/zed_node/right_raw/image_raw_color', dst='/camera/right'),
-            SetRemap(src='/zedm/zed_node/imu/data', dst='/imu'),
-            zedm
-        ]),
+        # GroupAction(actions=[
+        #     SetRemap(src='/zedm/zed_node/left_raw/image_raw_color', dst='/camera/left'),
+        #     SetRemap(src='/zedm/zed_node/right_raw/image_raw_color', dst='/camera/right'),
+        #     SetRemap(src='/zedm/zed_node/imu/data', dst='/imu'),
+        #     zedm
+        # ]),
+        zedm_with_remapped_topics,
         orbslam3
         
     ])
