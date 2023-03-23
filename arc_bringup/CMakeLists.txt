@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(arc_msgs)
+project(arc_bringup)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -17,8 +17,6 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -30,6 +28,18 @@ if(BUILD_TESTING)
   #set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+
+file(GLOB_RECURSE launch_files "${CMAKE_CURRENT_SOURCE_DIR}/launch/*.launch.py")
+
+foreach(launch_file ${launch_files})
+  message(STATUS "Found launch file: ${launch_file}")
+endforeach()
+
+install(
+  FILES ${launch_files}
+  DESTINATION share/${PROJECT_NAME}/
+)
 
 
 ament_package()

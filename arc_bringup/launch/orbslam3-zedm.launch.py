@@ -15,7 +15,7 @@ def expand(path: str) -> str:
 
 def generate_launch_description() -> LaunchDescription:
 
-    rectify = 'false' # things seems to work when this variable is set to false  
+    rectify = 'true' # things seems to work when this variable is set to false  
     equalize = 'true' # 
     orbslam3 = Node(
         package="orbslam3",
