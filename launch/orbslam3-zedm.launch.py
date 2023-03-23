@@ -5,15 +5,22 @@ from launch.event_handlers import OnShutdown
 from launch_ros.actions import Node, SetRemap
 from launch_ros.substitutions import FindPackageShare
 
-from .utils import expand
+import os
+
+def expand(path: str) -> str:
+    expanded_path = os.path.expanduser(path)
+    # assert that the path exists
+    assert os.path.exists(expanded_path), f"{expanded_path} does NOT exist!"
+    return expanded_path
 
 def generate_launch_description() -> LaunchDescription:
 
-    rectify = 'true'
-    equalize = 'true'
+    rectify = 'false' # things seems to work when this variable is set to false  
+    equalize = 'true' # 
     orbslam3 = Node(
         package="orbslam3",
         executable="stereo-inertial",
+        # executable="stereo",
         output='screen',
         arguments=[
             expand('~/multi-agent-robotics/ORB-SLAM3-STEREO-FIXED/vocabulary/ORBvoc.txt'),
