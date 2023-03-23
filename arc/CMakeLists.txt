@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(rnd-lugbot)
+project(arc)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -17,9 +17,10 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(arc_msgs REQUIRED)
+find_package(arc_bringup REQUIRED)
+find_package(arc_teleop REQUIRED)
+find_package(arc_base REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -31,14 +32,5 @@ if(BUILD_TESTING)
   #set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
-
-
-# select all files in lauch directory ending with *.launch.py
-file(GLOB_RECURSE launch_files "launch/*.launch.py")
-
-install(
-  FILES ${launch_files}
-  DESTINATION share/${PROJECT_NAME}/
-)
 
 ament_package()

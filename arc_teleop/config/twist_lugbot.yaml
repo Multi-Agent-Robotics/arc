@@ -1,0 +1,13 @@
+ds4_twist:
+  ros__parameters:
+    stamped: true
+    inputs:
+      linear:
+        x: axis_r2 - axis_l2
+      angular:
+        z: axis_left_x
+    scales:
+      linear:
+        x: 1.0
+      angular:
+        z: 1.0

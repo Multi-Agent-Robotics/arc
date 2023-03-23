@@ -1,0 +1,31 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/orin/ros2_ws/install/zed_topic_benchmark_interfaces/include/**",
+        "/home/orin/ros2_ws/install/zed_rgb_convert/include/**",
+        "/home/orin/ros2_ws/install/zed_components/include/**",
+        "/home/orin/ros2_ws/install/rviz_plugin_zed_od/include/**",
+        "/home/orin/ros2_ws/install/zed_interfaces/include/**",
+        "/home/orin/ros2_ws/install/orbslam3_msgs/include/**",
+        "/home/orin/ros2_ws/install/ds4_driver_msgs/include/**",
+        "/home/orin/ros2_ws/install/camera_calibration_parsers/include/**",
+        "/opt/ros/foxy/include/**",
+        "/home/orin/ros2_ws/src/orbslam3/include/**",
+        "/home/orin/ros2_ws/src/orbslam3_msgs/include/**",
+        "/home/orin/ros2_ws/src/rnd-lugbot/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-arm64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

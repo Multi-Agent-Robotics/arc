@@ -50,6 +50,7 @@ def generate_launch_description() -> LaunchDescription:
     )
 
 
+    # TODO: do not hardcode abs path
     path_to_rviz2_config = expand('~/ros2_ws/src/rnd-lugbot/rviz2/orbslam3-ros2-euroc-dataset.rviz')
     rviz2 = Node(
         package='rviz2',

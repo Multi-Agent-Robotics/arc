@@ -1,0 +1,33 @@
+---
+launch:
+- arg:
+    name: addr
+    default: ""
+- arg:
+    name: stamped
+    default: "false"
+- arg:
+    name: use_standard_msgs
+    default: "false"
+
+- include:
+    file: $(find-pkg-share ds4_driver)/launch/ds4_driver.launch.xml
+    arg:
+    -
+        name: addr
+        value: $(var addr)
+    -
+        name: use_standard_msgs
+        value: $(var use_standard_msgs)
+
+- node:
+    pkg: ds4_driver
+    exec: ds4_twist_node.py
+    name: ds4_twist
+    # output: screen
+    param:
+    -
+        name: stamped
+        value: $(var stamped)
+    -
+        from: $(find-pkg-share arc_teleop)/config/twist_lugbot.yaml
