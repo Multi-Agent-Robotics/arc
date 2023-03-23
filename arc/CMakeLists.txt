@@ -18,7 +18,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(arc_msgs REQUIRED)
-find_package(arc_bringup REQUIRED)
+# find_package(arc_bringup REQUIRED)
 find_package(arc_teleop REQUIRED)
 find_package(arc_base REQUIRED)
 
