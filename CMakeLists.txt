@@ -33,7 +33,12 @@ if(BUILD_TESTING)
 endif()
 
 
-install(DIRECTORY launch
-DESTINATION share/${PROJECT_NAME})
+# select all files in lauch directory ending with *.launch.py
+file(GLOB_RECURSE launch_files "launch/*.launch.py")
+
+install(
+  FILES ${launch_files}
+  DESTINATION share/${PROJECT_NAME}/
+)
 
 ament_package()
