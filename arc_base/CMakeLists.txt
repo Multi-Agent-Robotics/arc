@@ -18,6 +18,15 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(arc_msgs REQUIRED)
+find_package(rclcpp REQUIRED)
+
+add_executable(twist_to_diff_drive_node src/twist_to_diff_drive_node.cpp)
+ament_target_dependencies(twist_to_diff_drive_node rclcpp arc_msgs geometry_msgs)
+
+install(TARGETS
+  twist_to_diff_drive_node
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

@@ -5,10 +5,10 @@
   <version>0.1.0</version>
   <description>TODO: Package description</description>
   <author email="kristoffer.pbs@tuta.io">Kristoffer Plagborg Bak Sørensen</author>
-  <author email="jens.jens@live.dk">Jens Heojgaard Jensen</author>
+  <author email="jens.jens@live.dk">Jens Høigaard Jensen</author>
 
   <maintainer email="kristoffer.pbs@tuta.io">Kristoffer Plagborg Bak Sørensen</maintainer>
-  <maintainer email="jens.jens@live.dk">Jens Heojgaard Jensen</maintainer>
+  <maintainer email="jens.jens@live.dk">Jens Høigaard Jensen</maintainer>
 
   <license file="../LICENSE">MIT</license>
 
