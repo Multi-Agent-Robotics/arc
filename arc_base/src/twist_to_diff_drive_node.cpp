@@ -1,5 +1,5 @@
 #include "arc_msgs/msg/diff_drive.hpp"
-#include "geometry_msgs/msg/twist.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include <cmath>
 #include <iostream>
@@ -8,7 +8,7 @@ template <typename T> using Publisher = rclcpp::Publisher<T>;
 
 template <typename T> using Subscriber = rclcpp::Subscription<T>;
 
-using TwistMsg = geometry_msgs::msg::Twist;
+using TwistStampedMsg = geometry_msgs::msg::TwistStamped;
 using DiffDriveMsg = arc_msgs::msg::DiffDrive;
 
 class DifferentialDrive {
@@ -22,21 +22,22 @@ class DifferentialDrive {
 
     // Calculate the left and right wheel velocities based on linear and angular
     // velocity
-    auto calculateWheelVelocities(double linear_vel, double angular_vel) const {
-        return std::pair{
+    auto calculateWheelVelocities(double linear_vel, double angular_vel) const -> std::pair<double, double> {
+    
+        return std::make_pair<double, double>(
             (linear_vel - (angular_vel * wheel_base_ / 2.0)) / wheel_radius_,
-            (linear_vel + (angular_vel * wheel_base_ / 2.0)) / wheel_radius_};
+            (linear_vel + (angular_vel * wheel_base_ / 2.0)) / wheel_radius_
+        );
     }
 };
 
 class TwistToDiffDriveNode : public rclcpp::Node {
   public:
-    TwistToDiffDriveNode() : Node("twist_to_diff_drive_node") {
+    TwistToDiffDriveNode() : Node("twist_to_diff_drive_node"), diff_drive_model_(0.224, 0.15) {
         // Create a DifferentialDrive object with a wheel base of 224mm and a
         // wheel radius of 150mm
-        diff_drive_model_ = DifferentialDrive(0.224, 0.15);
 
-        twist_sub_ = this->create_subscription<TwistMsg>(
+        twist_sub_ = this->create_subscription<TwistStampedMsg>(
             "cmd_vel", 10,
             std::bind(&TwistToDiffDriveNode::twist_cb, this,
                       std::placeholders::_1));
@@ -45,14 +46,17 @@ class TwistToDiffDriveNode : public rclcpp::Node {
     }
 
   private:
-    Subscriber<TwistMsg>::SharedPtr twist_sub_;
+    Subscriber<TwistStampedMsg>::SharedPtr twist_sub_;
     Publisher<DiffDriveMsg>::SharedPtr diff_drive_pub_;
     DifferentialDrive diff_drive_model_;
-    void twist_cb(TwistMsg msg) {
+
+    void twist_cb(const TwistStampedMsg::SharedPtr msg) const {
         // Calculate the left and right wheel velocities
-        auto [left_motor, right_motor] =
-            diff_drive_model_.calculateWheelVelocities(msg.linear.x,
-                                                       msg.angular.z);
+        double x = msg->twist.linear.x;
+        double z = msg->twist.angular.z;
+        auto pair = diff_drive_model_.calculateWheelVelocities(x, z);
+        double left_motor = pair.first;
+        double right_motor = pair.second;                                                
 
         // Publish the left and right motor velocities
         auto diff_drive_msg = DiffDriveMsg();
@@ -62,7 +66,7 @@ class TwistToDiffDriveNode : public rclcpp::Node {
     }
 };
 
-int main() {
+int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
 
     auto node = std::make_shared<TwistToDiffDriveNode>();
