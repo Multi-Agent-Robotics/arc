@@ -14,64 +14,47 @@ class DifferentialDrive {
   private:
     double wheel_base_;
     double wheel_radius_;
+    double target_velocity_;
 
   public:
     DifferentialDrive(double wheel_base, double wheel_radius)
-        : wheel_base_{wheel_base}, wheel_radius_{wheel_radius} {}
+        : wheel_base_{wheel_base}, wheel_radius_{wheel_radius},
+          target_velocity_{target_velocity} {}
 
-    // Calculate the left and right wheel velocities based on linear and angular
-    // velocity.
-
-    // Constraints:
-    // 1) output wheel velocities must be in the range [-1, 1]
-
-    // 2) when linear velocity is 1 and angular velocity is 0, the left and
-    // right wheel velocities must be 1
-
-    // 3) when linear velocity is 0 and angular velocity is 1, the left wheel
-    // velocity must be 1 and the right wheel velocity must be -1
-
-    // 4) when linear velocity is 0 and angular velocity is -1, the left wheel
-    // velocity must be -1 and the right wheel velocity must be 1
-
-    // 5) when linear velocity is 1 and angular velocity is 1, the left wheel
-    // velocity must be 0 and the right wheel velocity must be 1
-
-    // 6) when linear velocity is 1 and angular velocity is -1, the left wheel
-    // velocity must be 1 and the right wheel velocity must be 0
+    // Calculate the relations between the left and right wheel velocities in
+    // [-1, 1]
     std::pair<double, double>
-    calculateWheelVelocities(double linear_velocity,
-                             double angular_velocity) const {
-        double left_wheel_velocity = 0;
-        double right_wheel_velocity = 0;
+    calculate_wheel_relations(double linear_velocity,
+                              double angular_velocity) const {
 
-        // calculate the left and right wheel velocities
-        // left_wheel_velocity =
-        //     (linear_velocity - (wheel_base_ * angular_velocity) / 2) /
-        //     wheel_radius_;
-        // right_wheel_velocity =
-        //     (linear_velocity + (wheel_base_ * angular_velocity) / 2) /
-        //     wheel_radius_;
-        left_wheel_velocity = linear_velocity - angular_velocity;
-        right_wheel_velocity = linear_velocity + angular_velocity;
+        double left_wheel_velocity = linear_velocity - angular_velocity;
+        double right_wheel_velocity = linear_velocity + angular_velocity;
 
-        // normalize the wheel velocities
-        double max_wheel_velocity = std::max(std::abs(left_wheel_velocity),
-                                             std::abs(right_wheel_velocity));
-        if (max_wheel_velocity > 1) {
-            left_wheel_velocity /= max_wheel_velocity;
-            right_wheel_velocity /= max_wheel_velocity;
-        }
+        return std::make_pair(left_wheel_velocity, right_wheel_velocity);
+    }
 
-        return std::make_pair(left_wheel_velocity * 2,
-                              right_wheel_velocity * 2);
+    // Given the target velocity, calculate the left and right wheel velocities
+    // based on the wheel base and wheel radius, given the relations between the
+    // left and right wheel velocities in [-1, 1], from the
+    // calculate_wheel_relations function
+    std::pair<double, double>
+    calculate_wheel_velocities(double target_velocity,
+                               double left_wheel_relation,
+                               double right_wheel_relation) const {
+
+        double left_wheel_velocity =
+            target_velocity * left_wheel_relation / wheel_radius_;
+        double right_wheel_velocity =
+            target_velocity * right_wheel_relation / wheel_radius_;
+
+        return std::make_pair(left_wheel_velocity, right_wheel_velocity);
     }
 };
 
 class TwistToDiffDriveNode : public rclcpp::Node {
   public:
     TwistToDiffDriveNode()
-        : Node("twist_to_diff_drive_node"), diff_drive_model_(0.224, 0.15) {
+        : Node("twist_to_diff_drive_node"), diff_drive_model_(0.224, 0.15, 1) {
         // Create a DifferentialDrive object with a wheel base of 224mm and a
         // wheel radius of 150mm
 
@@ -92,9 +75,12 @@ class TwistToDiffDriveNode : public rclcpp::Node {
         // Calculate the left and right wheel velocities
         double x = msg->twist.linear.x;
         double z = msg->twist.angular.z;
-        auto pair = diff_drive_model_.calculateWheelVelocities(x, z);
-        double left_motor = pair.first;
-        double right_motor = pair.second;
+        auto wheel_relations =
+            diff_drive_model_.calculate_wheel_relations(x, z);
+        auto wheel_velocities = diff_drive_model_.calculate_wheel_velocities(
+            0.5, wheel_relations.first, wheel_relations.second);
+        double left_motor = wheel_velocities.first;
+        double right_motor = wheel_velocities.second;
 
         // Publish the left and right motor velocities
         auto diff_drive_msg = DiffDriveMsg();
