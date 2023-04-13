@@ -34,7 +34,7 @@ class DifferentialDrive {
     // 4) when linear velocity is 0 and angular velocity is -1, the left wheel
     // velocity must be -1 and the right wheel velocity must be 1
 
-    // 5) when linear velocitu is 1 and angular velocity is 1, the left wheel
+    // 5) when linear velocity is 1 and angular velocity is 1, the left wheel
     // velocity must be 0 and the right wheel velocity must be 1
 
     // 6) when linear velocity is 1 and angular velocity is -1, the left wheel
@@ -46,12 +46,14 @@ class DifferentialDrive {
         double right_wheel_velocity = 0;
 
         // calculate the left and right wheel velocities
-        left_wheel_velocity =
-            (linear_velocity - (wheel_base_ * angular_velocity) / 2) /
-            wheel_radius_;
-        right_wheel_velocity =
-            (linear_velocity + (wheel_base_ * angular_velocity) / 2) /
-            wheel_radius_;
+        // left_wheel_velocity =
+        //     (linear_velocity - (wheel_base_ * angular_velocity) / 2) /
+        //     wheel_radius_;
+        // right_wheel_velocity =
+        //     (linear_velocity + (wheel_base_ * angular_velocity) / 2) /
+        //     wheel_radius_;
+        left_wheel_velocity = linear_velocity - angular_velocity;
+        right_wheel_velocity = linear_velocity + angular_velocity;
 
         // normalize the wheel velocities
         double max_wheel_velocity = std::max(std::abs(left_wheel_velocity),
