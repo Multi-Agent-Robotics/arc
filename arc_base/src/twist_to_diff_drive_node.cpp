@@ -101,8 +101,8 @@ class TwistToDiffDriveNode : public rclcpp::Node {
         double z = msg->twist.angular.z;
         auto wheel_relations =
             diff_drive_model_.calculate_wheel_relations(x, z);
-        double left_motor = wheel_relations.first;
-        double right_motor = wheel_relations.second;
+        // double left_motor = wheel_relations.first;
+        // double right_motor = wheel_relations.second;
         // converting to wheel velocities
         auto wheel_velocities = diff_drive_model_.calculate_wheel_velocities(
             wheel_relations.first, wheel_relations.second);
