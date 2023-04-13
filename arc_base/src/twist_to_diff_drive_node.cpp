@@ -1,6 +1,7 @@
 #include "arc_msgs/msg/diff_drive.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/float64.hpp"
 #include <cmath>
 #include <iostream>
 
@@ -93,6 +94,8 @@ class TwistToDiffDriveNode : public rclcpp::Node {
   private:
     Subscriber<TwistStampedMsg>::SharedPtr twist_sub_;
     Publisher<DiffDriveMsg>::SharedPtr diff_drive_pub_;
+    Publisher<float64msg>::SharedPtr motor_left_pub_;
+    Publisher<float64msg>::SharedPtr motor_right_pub_;
     DifferentialDrive diff_drive_model_;
 
     void twist_cb(const TwistStampedMsg::SharedPtr msg) const {
@@ -116,7 +119,7 @@ class TwistToDiffDriveNode : public rclcpp::Node {
         diff_drive_pub_->publish(diff_drive_msg);
 
         // publish to the motor controllers
-        auto left_motor_msg = float64msg();
+        auto left_motor_msg = ();
         left_motor_msg.data = left_motor;
         motor_left_pub_->publish(left_motor_msg);
 
