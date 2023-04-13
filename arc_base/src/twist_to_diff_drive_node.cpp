@@ -128,16 +128,16 @@ class TwistToDiffDriveNode : public rclcpp::Node {
         motor_right_pub_->publish(right_motor_msg);
     }
 };
+} // namespace arc
 
 int main(int argc, char **argv) {
     printf("Starting twist_to_diff_drive_node");
     rclcpp::init(argc, argv);
 
-    auto node = std::make_shared<TwistToDiffDriveNode>();
+    auto node = std::make_shared<arc::TwistToDiffDriveNode>();
 
     rclcpp::spin(node);
     rclcpp::shutdown();
 
     return 0;
 }
-} // namespace arc
