@@ -31,13 +31,13 @@ class DifferentialDrive {
         double left_wheel = linear_velocity - angular_velocity;
         double right_wheel = linear_velocity + angular_velocity;
 
-        // // constrain the wheel velocities to [-1, 1]
-        // double max_wheel_velocity =
-        //     std::max(std::abs(left_wheel), std::abs(right_wheel));
-        // if (max_wheel_velocity > 1) {
-        //     left_wheel /= max_wheel_velocity;
-        //     right_wheel /= max_wheel_velocity;
-        // }
+        // constrain the wheel velocities to [-1, 1]
+        double max_wheel_velocity =
+            std::max(std::abs(left_wheel), std::abs(right_wheel));
+        if (max_wheel_velocity > 1) {
+            left_wheel /= max_wheel_velocity;
+            right_wheel /= max_wheel_velocity;
+        }
 
         return std::make_pair(left_wheel, right_wheel);
     }
@@ -102,7 +102,7 @@ class TwistToDiffDriveNode : public rclcpp::Node {
 };
 
 int main(int argc, char **argv) {
-    // printf("Starting twist_to_diff_drive_node");
+    printf("Starting twist_to_diff_drive_node");
     rclcpp::init(argc, argv);
 
     auto node = std::make_shared<TwistToDiffDriveNode>();
