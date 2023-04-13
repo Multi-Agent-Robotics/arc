@@ -114,6 +114,15 @@ class TwistToDiffDriveNode : public rclcpp::Node {
         diff_drive_msg.left_motor = left_motor;
         diff_drive_msg.right_motor = right_motor;
         diff_drive_pub_->publish(diff_drive_msg);
+
+        // publish to the motor controllers
+        auto left_motor_msg = float64msg();
+        left_motor_msg.data = left_motor;
+        motor_left_pub_->publish(left_motor_msg);
+
+        auto right_motor_msg = float64msg();
+        right_motor_msg.data = right_motor;
+        motor_right_pub_->publish(right_motor_msg);
     }
 };
 
