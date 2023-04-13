@@ -28,18 +28,18 @@ class DifferentialDrive {
     calculate_wheel_relations(double linear_velocity,
                               double angular_velocity) const {
 
-        double left_wheel_velocity = linear_velocity - angular_velocity;
-        double right_wheel_velocity = linear_velocity + angular_velocity;
+        double left_wheel = linear_velocity - angular_velocity;
+        double right_wheel = linear_velocity + angular_velocity;
 
-        // constrain the wheel velocities to [-1, 1]
-        double max_wheel_velocity = std::max(std::abs(left_wheel_velocity),
-                                             std::abs(right_wheel_velocity));
-        if (max_wheel_velocity > 1) {
-            left_wheel_velocity /= max_wheel_velocity;
-            right_wheel_velocity /= max_wheel_velocity;
-        }
+        // // constrain the wheel velocities to [-1, 1]
+        // double max_wheel_velocity =
+        //     std::max(std::abs(left_wheel), std::abs(right_wheel));
+        // if (max_wheel_velocity > 1) {
+        //     left_wheel /= max_wheel_velocity;
+        //     right_wheel /= max_wheel_velocity;
+        // }
 
-        return std::make_pair(left_wheel_velocity, right_wheel_velocity);
+        return std::make_pair(left_wheel, right_wheel);
     }
 
     // Given the target velocity, calculate the left and right wheel velocities
