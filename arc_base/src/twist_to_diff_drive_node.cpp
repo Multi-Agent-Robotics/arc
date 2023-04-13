@@ -31,6 +31,14 @@ class DifferentialDrive {
         double left_wheel_velocity = linear_velocity - angular_velocity;
         double right_wheel_velocity = linear_velocity + angular_velocity;
 
+        // constrain the wheel velocities to [-1, 1]
+        double max_wheel_velocity = std::max(std::abs(left_wheel_velocity),
+                                             std::abs(right_wheel_velocity));
+        if (max_wheel_velocity > 1) {
+            left_wheel_velocity /= max_wheel_velocity;
+            right_wheel_velocity /= max_wheel_velocity;
+        }
+
         return std::make_pair(left_wheel_velocity, right_wheel_velocity);
     }
 
