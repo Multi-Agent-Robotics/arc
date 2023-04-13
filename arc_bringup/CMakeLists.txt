@@ -31,6 +31,7 @@ endif()
 
 
 file(GLOB_RECURSE launch_files "${CMAKE_CURRENT_SOURCE_DIR}/launch/*.launch.py")
+file(GLOB_RECURSE config_files "${CMAKE_CURRENT_SOURCE_DIR}/config/*")
 
 foreach(launch_file ${launch_files})
   message(STATUS "Found launch file: ${launch_file}")
@@ -41,5 +42,9 @@ install(
   DESTINATION share/${PROJECT_NAME}/
 )
 
+install(
+  FILES ${config_files}
+  DESTINATION share/${PROJECT_NAME}/config/
+)
 
 ament_package()

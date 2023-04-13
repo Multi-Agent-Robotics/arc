@@ -1,0 +1,9 @@
+---
+launch:
+
+
+node:
+  package: vesc_driver
+  exec: vesc_driver_node
+  name: vesc_driver_node
+  para
