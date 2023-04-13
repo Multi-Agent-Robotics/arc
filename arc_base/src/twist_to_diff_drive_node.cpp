@@ -17,7 +17,8 @@ class DifferentialDrive {
     double target_velocity_;
 
   public:
-    DifferentialDrive(double wheel_base, double wheel_radius)
+    DifferentialDrive(double wheel_base, double wheel_radius,
+                      double target_velocity)
         : wheel_base_{wheel_base}, wheel_radius_{wheel_radius},
           target_velocity_{target_velocity} {}
 
