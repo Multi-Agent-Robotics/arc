@@ -4,23 +4,31 @@
 #include <cmath>
 #include <iostream>
 
+namespace arc {
+
 template <typename T> using Publisher = rclcpp::Publisher<T>;
 template <typename T> using Subscriber = rclcpp::Subscription<T>;
 
 using TwistStampedMsg = geometry_msgs::msg::TwistStamped;
 using DiffDriveMsg = arc_msgs::msg::DiffDrive;
+using float64msg = std_msgs::msg::Float64;
+
+#define MOTOR_T 15
+#define WHEEL_T 60
+#define GEARING MOTOR_T / WHEEL_T
 
 class DifferentialDrive {
   private:
     double wheel_base_;
     double wheel_radius_;
     double target_velocity_;
+    double gearing_;
 
   public:
-    DifferentialDrive(double wheel_base, double wheel_radius,
+    DifferentialDrive(double wheel_base, double wheel_radius, double gearing,
                       double target_velocity)
         : wheel_base_{wheel_base}, wheel_radius_{wheel_radius},
-          target_velocity_{target_velocity} {}
+          target_velocity_{target_velocity}, gearing_{gearing} {}
 
     // Calculate the relations between the left and right wheel velocities in
     // [-1, 1]
@@ -28,18 +36,18 @@ class DifferentialDrive {
     calculate_wheel_relations(double linear_velocity,
                               double angular_velocity) const {
 
-        double left_wheel = linear_velocity - angular_velocity;
-        double right_wheel = linear_velocity + angular_velocity;
+        double wheel_left = linear_velocity - angular_velocity;
+        double wheel_right = linear_velocity + angular_velocity;
 
         // constrain the wheel velocities to [-1, 1]
         double max_wheel_velocity =
-            std::max(std::abs(left_wheel), std::abs(right_wheel));
+            std::max(std::abs(wheel_left), std::abs(wheel_right));
         if (max_wheel_velocity > 1) {
-            left_wheel /= max_wheel_velocity;
-            right_wheel /= max_wheel_velocity;
+            wheel_left /= max_wheel_velocity;
+            wheel_right /= max_wheel_velocity;
         }
 
-        return std::make_pair(left_wheel, right_wheel);
+        return std::make_pair(wheel_left, wheel_right);
     }
 
     // Given the target velocity, calculate the left and right wheel velocities
@@ -47,23 +55,25 @@ class DifferentialDrive {
     // left and right wheel velocities in [-1, 1], from the
     // calculate_wheel_relations function
     std::pair<double, double>
-    calculate_wheel_velocities(double target_velocity,
-                               double left_wheel_relation,
-                               double right_wheel_relation) const {
+    calculate_wheel_velocities(double wheel_left_relation,
+                               double wheel_right_relation) const {
 
-        double left_wheel_velocity =
-            target_velocity * left_wheel_relation / wheel_radius_;
-        double right_wheel_velocity =
-            target_velocity * right_wheel_relation / wheel_radius_;
+        double wheel_left_velocity = this->target_velocity_ *
+                                     wheel_left_relation /
+                                     (wheel_radius_ * gearing_);
+        double wheel_right_velocity = this->target_velocity_ *
+                                      wheel_right_relation /
+                                      (wheel_radius_ * gearing_);
 
-        return std::make_pair(left_wheel_velocity, right_wheel_velocity);
+        return std::make_pair(wheel_left_velocity, wheel_right_velocity);
     }
 };
 
 class TwistToDiffDriveNode : public rclcpp::Node {
   public:
     TwistToDiffDriveNode()
-        : Node("twist_to_diff_drive_node"), diff_drive_model_(0.224, 0.15, 1) {
+        : Node("twist_to_diff_drive_node"),
+          diff_drive_model_(0.224, 0.15, GEARING, 1) {
         // Create a DifferentialDrive object with a wheel base of 224mm and a
         // wheel radius of 150mm
 
@@ -73,6 +83,11 @@ class TwistToDiffDriveNode : public rclcpp::Node {
                       std::placeholders::_1));
         diff_drive_pub_ =
             this->create_publisher<DiffDriveMsg>("diff_drive", 10);
+
+        motor_left_pub_ = this->create_publisher<float64msg>(
+            "motor_left/commands/motor/speed", 10);
+        motor_right_pub_ = this->create_publisher<float64msg>(
+            "motor_right/commands/motor/speed", 10);
     }
 
   private:
@@ -90,7 +105,7 @@ class TwistToDiffDriveNode : public rclcpp::Node {
         double right_motor = wheel_relations.second;
         // converting to wheel velocities
         auto wheel_velocities = diff_drive_model_.calculate_wheel_velocities(
-            2, wheel_relations.first, wheel_relations.second);
+            wheel_relations.first, wheel_relations.second);
         double left_motor = wheel_velocities.first;
         double right_motor = wheel_velocities.second;
 
@@ -99,6 +114,15 @@ class TwistToDiffDriveNode : public rclcpp::Node {
         diff_drive_msg.left_motor = left_motor;
         diff_drive_msg.right_motor = right_motor;
         diff_drive_pub_->publish(diff_drive_msg);
+
+        // publish to the motor controllers
+        auto left_motor_msg = float64msg();
+        left_motor_msg.data = left_motor;
+        motor_left_pub_->publish(left_motor_msg);
+
+        auto right_motor_msg = float64msg();
+        right_motor_msg.data = right_motor;
+        motor_right_pub_->publish(right_motor_msg);
     }
 };
 
@@ -113,3 +137,4 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+} // namespace arc
