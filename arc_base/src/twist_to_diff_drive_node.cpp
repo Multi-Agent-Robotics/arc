@@ -14,9 +14,9 @@ using TwistStampedMsg = geometry_msgs::msg::TwistStamped;
 using DiffDriveMsg = arc_msgs::msg::DiffDrive;
 using float64msg = std_msgs::msg::Float64;
 
-#define MOTOR_T 15
-#define WHEEL_T 60
-#define GEARING MOTOR_T / WHEEL_T
+constexpr double MOTOR_T = 15.0;
+constexpr double WHEEL_T = 60.0;
+constexpr double GEARING = (MOTOR_T / WHEEL_T);
 
 class DifferentialDrive {
   private:
@@ -107,11 +107,15 @@ class TwistToDiffDriveNode : public rclcpp::Node {
         // double left_motor = wheel_relations.first;
         // double right_motor = wheel_relations.second;
         // converting to wheel velocities
+
+        RCLCPP_INFO(this->get_logger(), "\nwr_right: %0.5f\nwr_left: %0.5f", wheel_relations.first, wheel_relations.second);
+      
         auto wheel_velocities = diff_drive_model_.calculate_wheel_velocities(
             wheel_relations.first, wheel_relations.second);
         double left_motor = wheel_velocities.first;
         double right_motor = wheel_velocities.second;
 
+        RCLCPP_INFO(this->get_logger(), "\nmotor_right: %0.5f\nmotor_left: %0.5f", left_motor, right_motor);
         // Publish the left and right motor velocities
         auto diff_drive_msg = DiffDriveMsg();
         diff_drive_msg.left_motor = left_motor;
