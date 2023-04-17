@@ -30,7 +30,7 @@ if(BUILD_TESTING)
 endif()
 
 
-file(GLOB_RECURSE launch_files "${CMAKE_CURRENT_SOURCE_DIR}/launch/*.launch.py")
+file(GLOB_RECURSE launch_files "${CMAKE_CURRENT_SOURCE_DIR}/launch/*")
 file(GLOB_RECURSE config_files "${CMAKE_CURRENT_SOURCE_DIR}/config/*")
 
 foreach(launch_file ${launch_files})
@@ -38,13 +38,13 @@ foreach(launch_file ${launch_files})
 endforeach()
 
 install(
-  FILES ${launch_files}
-  DESTINATION share/${PROJECT_NAME}/
+    DIRECTORY launch
+    DESTINATION share/${PROJECT_NAME}
 )
 
 install(
-  FILES ${config_files}
-  DESTINATION share/${PROJECT_NAME}/config/
+    DIRECTORY config
+    DESTINATION share/${PROJECT_NAME}/config
 )
 
 ament_package()

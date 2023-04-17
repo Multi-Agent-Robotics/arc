@@ -30,15 +30,15 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-file(GLOB_RECURSE launch_files "${CMAKE_CURRENT_SOURCE_DIR}/launch/*.launch.py")
+file(GLOB_RECURSE launch_files "${CMAKE_CURRENT_SOURCE_DIR}/launch/*")
 
 foreach(launch_file ${launch_files})
   message(STATUS "Found launch file: ${launch_file}")
 endforeach()
 
 install(
-  FILES ${launch_files}
-  DESTINATION share/${PROJECT_NAME}/
+    DIRECTORY launch
+    DESTINATION share/${PROJECT_NAME}
 )
 
 ament_package()
