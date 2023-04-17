@@ -17,15 +17,29 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(arc_msgs REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(geometry_msgs REQUIRED)
+
+set(SHARED_AMENT_DEPS rclcpp arc_msgs vesc_msgs geometry_msgs)
+foreach(ament_deps ${SHARED_AMENT_DEPS})
+    find_package(${ament_deps} REQUIRED) 
+endforeach()
+
+
+# find_package(rclcpp REQUIRED)
+# find_package(arc_msgs REQUIRED)
+# find_package(vesc_msgs REQUIRED)
+# find_package(geometry_msgs REQUIRED)
 
 add_executable(twist_to_diff_drive_node src/twist_to_diff_drive_node.cpp)
-ament_target_dependencies(twist_to_diff_drive_node rclcpp arc_msgs geometry_msgs)
+# ament_target_dependencies(twist_to_diff_drive_node arc_msgs vesc_msgs geometry_msgs)
+ament_target_dependencies(twist_to_diff_drive_node ${SHARED_AMENT_DEPS})
+
+add_executable(low_level_motor_controller src/low_level_motor_controller.cpp)
+ament_target_dependencies(low_level_motor_controller ${SHARED_AMENT_DEPS})
+# ament_target_dependencies(low_level_motor_controller rclcpp arc_msgs vesc_msgs geometry_msgs)
 
 install(TARGETS
   twist_to_diff_drive_node
+  low_level_motor_controller
   DESTINATION lib/${PROJECT_NAME}
 )
 

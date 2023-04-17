@@ -9,13 +9,13 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 
-    vesc_left_config = os.path.join(
-        get_package_share_directory('arc_bringup'),
-        'config',
-        'vesc-left.yaml'
-    )
+    # vesc_left_config = os.path.join(
+    #     get_package_share_directory('arc_bringup'),
+    #     'config',
+    #     'vesc-left.yaml'
+    # )
 
-    print(vesc_left_config)
+    # print(vesc_left_config)
 
     vesc_right_config = os.path.join(
         get_package_share_directory('arc_bringup'),
@@ -31,18 +31,18 @@ def generate_launch_description():
     #    )
 
     return LaunchDescription([
-        DeclareLaunchArgument(
-            name="config-left",
-            default_value=vesc_left_config,
-            description="VESC yaml configuration file.",
-        ),
-        Node(
-            package='vesc_driver',
-            executable='vesc_driver_node',
-            namespace='motor_left',
-            name='vesc_driver_node',
-            parameters=[LaunchConfiguration("config-left")]
-        ),
+        # DeclareLaunchArgument(
+        #     name="config-left",
+        #     default_value=vesc_left_config,
+        #     description="VESC yaml configuration file.",
+        # ),
+        # Node(
+        #     package='vesc_driver',
+        #     executable='vesc_driver_node',
+        #     namespace='motor_left',
+        #     name='vesc_driver_node',
+        #     parameters=[LaunchConfiguration("config-left")]
+        # ),
         DeclareLaunchArgument(
             name="config-right",
             default_value=vesc_right_config,

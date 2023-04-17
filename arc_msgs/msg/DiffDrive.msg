@@ -1,2 +1,2 @@
-float32 left_motor
-float32 right_motor
+float32 drive_left  # RPM
+float32 drive_right # RPM

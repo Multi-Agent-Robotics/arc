@@ -1,21 +1,22 @@
-#include "arc_msgs/msg/diff_drive.hpp"
-#include "geometry_msgs/msg/twist_stamped.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include <cmath>
 #include <iostream>
 
 namespace arc {
 
+using namespace std::placeholders;
+
 template <typename T> using Publisher = rclcpp::Publisher<T>;
 template <typename T> using Subscriber = rclcpp::Subscription<T>;
 
 using TwistStampedMsg = geometry_msgs::msg::TwistStamped;
-using DiffDriveMsg = arc_msgs::msg::DiffDrive;
 using float64msg = std_msgs::msg::Float64;
 
 constexpr double MOTOR_T = 15.0;
 constexpr double WHEEL_T = 60.0;
+constexpr double TO_RPM = 900; // todo explain
 constexpr double GEARING = (MOTOR_T / WHEEL_T);
 
 class DifferentialDrive {
@@ -61,10 +62,10 @@ class DifferentialDrive {
 
         double wheel_left_velocity = this->target_velocity_ *
                                      wheel_left_relation /
-                                     (wheel_radius_ * gearing_);
+                                     (wheel_radius_ * gearing_) * TO_RPM;
         double wheel_right_velocity = this->target_velocity_ *
                                       wheel_right_relation /
-                                      (wheel_radius_ * gearing_);
+                                      (wheel_radius_ * gearing_) * TO_RPM;
 
         return std::make_pair(wheel_left_velocity, wheel_right_velocity);
     }
@@ -80,22 +81,18 @@ class TwistToDiffDriveNode : public rclcpp::Node {
 
         twist_sub_ = this->create_subscription<TwistStampedMsg>(
             "cmd_vel", 10,
-            std::bind(&TwistToDiffDriveNode::twist_cb, this,
-                      std::placeholders::_1));
-        diff_drive_pub_ =
-            this->create_publisher<DiffDriveMsg>("diff_drive", 10);
+            std::bind(&TwistToDiffDriveNode::twist_cb, this, _1));
 
-        motor_left_pub_ = this->create_publisher<float64msg>(
-            "motor_left/commands/motor/speed", 10);
-        motor_right_pub_ = this->create_publisher<float64msg>(
-            "motor_right/commands/motor/speed", 10);
+        motor_speed_left_pub_ =
+            this->create_publisher<float64msg>("motor_right/target/motor/speed", 10);
+        motor_speed_left_pub_ =
+            this->create_publisher<float64msg>("motor_left/target/motor/speed", 10);
     }
 
   private:
     Subscriber<TwistStampedMsg>::SharedPtr twist_sub_;
-    Publisher<DiffDriveMsg>::SharedPtr diff_drive_pub_;
-    Publisher<float64msg>::SharedPtr motor_left_pub_;
-    Publisher<float64msg>::SharedPtr motor_right_pub_;
+    Publisher<float64msg>::SharedPtr motor_speed_left_pub_;
+    Publisher<float64msg>::SharedPtr motor_speed_right_pub_;
     DifferentialDrive diff_drive_model_;
 
     void twist_cb(const TwistStampedMsg::SharedPtr msg) const {
@@ -108,28 +105,30 @@ class TwistToDiffDriveNode : public rclcpp::Node {
         // double right_motor = wheel_relations.second;
         // converting to wheel velocities
 
-        RCLCPP_INFO(this->get_logger(), "\nwr_right: %0.5f\nwr_left: %0.5f", wheel_relations.first, wheel_relations.second);
-      
+        // RCLCPP_INFO(this->get_logger(), "\nwr_right: %0.5f\nwr_left: %0.5f",
+        // wheel_relations.first, wheel_relations.second);
+
         auto wheel_velocities = diff_drive_model_.calculate_wheel_velocities(
             wheel_relations.first, wheel_relations.second);
         double left_motor = wheel_velocities.first;
         double right_motor = wheel_velocities.second;
 
-        RCLCPP_INFO(this->get_logger(), "\nmotor_right: %0.5f\nmotor_left: %0.5f", left_motor, right_motor);
-        // Publish the left and right motor velocities
-        auto diff_drive_msg = DiffDriveMsg();
-        diff_drive_msg.left_motor = left_motor;
-        diff_drive_msg.right_motor = right_motor;
-        diff_drive_pub_->publish(diff_drive_msg);
+        // RCLCPP_INFO(this->get_logger(), "\nmotor_right: %0.5f\nmotor_left:
+        // %0.5f", left_motor, right_motor); Publish the left and right motor
+        // velocities
+        // auto diff_drive_msg = DiffDriveMsg();
+        // diff_drive_msg.left_motor = left_motor;
+        // diff_drive_msg.right_motor = right_motor;
+        // diff_drive_pub_->publish(diff_drive_msg);
 
         // publish to the motor controllers
         auto left_motor_msg = float64msg();
         left_motor_msg.data = left_motor;
-        motor_left_pub_->publish(left_motor_msg);
+        motor_speed_left_pub_->publish(left_motor_msg);
 
         auto right_motor_msg = float64msg();
         right_motor_msg.data = right_motor;
-        motor_right_pub_->publish(right_motor_msg);
+        motor_speed_right_pub_->publish(right_motor_msg);
     }
 };
 } // namespace arc
