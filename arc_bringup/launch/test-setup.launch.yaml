@@ -1,0 +1,19 @@
+---
+launch:
+  # start websocket server on port 9090 to communicate with Foxglove Studio
+- include:
+    file: $(find-pkg-share rosbridge_server)/launch/rosbridge_websocket_launch.xml
+
+  # Connect to Platstation 4 Dualshock controller
+- include:
+    file: $(find-pkg-share arc_teleop)/launch/ds4_twist.launch.yaml
+
+  # Fire up the VESC driver nodes
+- include:
+    file: $(find-pkg-share arc_bringup)/launch/vesc.launch.py
+
+  # Twist to diff drive
+- node:
+    pkg: arc_base
+    exec: twist_to_diff_drive_node
+    name: twist_to_diff_drive

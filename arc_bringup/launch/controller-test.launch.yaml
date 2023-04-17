@@ -8,9 +8,3 @@ launch:
   # Connect to Platstation 4 Dualshock controller
 - include:
   file: $(find-pkg-share arc_teleop)/launch/ds4_twist.launch.yaml
-
-- node:
-    pkg: 
-    exec:
-    name:
-    #param:
