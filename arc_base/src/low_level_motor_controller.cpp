@@ -8,6 +8,8 @@
 
 namespace arc {
 
+using Str = std::string;
+
 using namespace std::placeholders;
 
 template <typename T> using Publisher = rclcpp::Publisher<T>;
@@ -16,8 +18,6 @@ template <typename T> using Subscriber = rclcpp::Subscription<T>;
 using TwistStampedMsg = geometry_msgs::msg::TwistStamped;
 using VescStateStampedMsg = vesc_msgs::msg::VescStateStamped;
 using float64msg = std_msgs::msg::Float64;
-
-enum class MotorPosition { Left, Right };
 
 class MotorController : public rclcpp::Node {
   private:
@@ -35,13 +35,22 @@ class MotorController : public rclcpp::Node {
     Publisher<float64msg>::SharedPtr motor_pub_;
 
   public:
-    MotorController(double kp, double ki, double kd, MotorPosition motor_pos)
+    MotorController(double kp, double ki, double kd)
         : Node("motor_controller"), kp_{kp}, ki_{ki}, kd_{kd},
           control_ki_prev_{0.0}, error_eRPM_prev_{0.0} {
 
+
         time_prev_ = this->get_clock()->now();
-        std::string motor_prefix =
-            motor_pos == MotorPosition::Left ? "motor_left" : "motor_right";
+        this->declare_parameter("motor_id");
+        auto motor_id_param = this->get_parameter("motor_id");
+        std::string motor_id = motor_id_param.as_string();
+        // if (motor_id != Str("left") || motor_id != Str("right")) {
+        //     RCLCPP_ERROR(this->get_logger(), "motor_id != \"left\" | \"right\", motor_id: %s", motor_id.c_str());
+        //     rclcpp::shutdown();
+        // } 
+            
+        std::string motor_prefix = "motor_" + motor_id;
+        RCLCPP_INFO(this->get_logger(), "motor_prefix: %s", motor_prefix.c_str());
 
         std::string diff_drive_topic =
             motor_prefix + std::string("/target/motor/speed");
@@ -91,24 +100,12 @@ int main(int argc, char **argv) {
     // printf("Starting motor controller node");
     rclcpp::init(argc, argv);
 
-    if (argc < 2) {
-        std::exit(1);
-    }
-
-    int motor_id = std::atoi(argv[1]);
-    if (motor_id != 0 || motor_id != 1) {
-        return 1;
-    }
-
     // Taken from VESC Tool
-    double kp = 0.004;
-    double ki = 0.004;
-    double kd = 0.0001;
+    constexpr double kp = 0.004;
+    constexpr double ki = 0.004;
+    constexpr double kd = 0.0001;
 
-    arc::MotorPosition motor_pos =
-        motor_id == 0 ? arc::MotorPosition::Left : arc::MotorPosition::Right;
-
-    auto node = std::make_shared<arc::MotorController>(kp, ki, kd, motor_pos);
+    auto node = std::make_shared<arc::MotorController>(kp, ki, kd);
 
     rclcpp::spin(node);
     rclcpp::shutdown();

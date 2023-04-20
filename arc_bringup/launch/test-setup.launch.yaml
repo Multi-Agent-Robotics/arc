@@ -23,8 +23,16 @@ launch:
     pkg: arc_base
     exec: low_level_motor_controller
     name: low_level_motor_controller_left
+    param:
+    -
+        name: "motor_id"
+        value: "left"
 
 - node:
     pkg: arc_base
     exec: low_level_motor_controller
     name: low_level_motor_controller_right
+    param:
+    -
+        name: "motor_id"
+        value: "right"

@@ -1,7 +1,9 @@
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp/executor.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include <cmath>
+#include <cstdio>
 #include <iostream>
 
 namespace arc {
@@ -83,10 +85,10 @@ class TwistToDiffDriveNode : public rclcpp::Node {
             "cmd_vel", 10,
             std::bind(&TwistToDiffDriveNode::twist_cb, this, _1));
 
-        motor_speed_left_pub_ =
-            this->create_publisher<float64msg>("motor_right/target/motor/speed", 10);
-        motor_speed_left_pub_ =
-            this->create_publisher<float64msg>("motor_left/target/motor/speed", 10);
+        motor_speed_left_pub_ = this->create_publisher<float64msg>(
+            "motor_right/target/motor/speed", 10);
+        motor_speed_left_pub_ = this->create_publisher<float64msg>(
+            "motor_left/target/motor/speed", 10);
     }
 
   private:
@@ -96,6 +98,7 @@ class TwistToDiffDriveNode : public rclcpp::Node {
     DifferentialDrive diff_drive_model_;
 
     void twist_cb(const TwistStampedMsg::SharedPtr msg) const {
+        RCLCPP_INFO(this->get_logger(), "Received twist:\ntwist.linear.x = %.5f\ntwist.angular.z = %.5f", msg->twist.linear.x, msg->twist.angular.z);
         // Calculate the left and right wheel velocities
         double x = msg->twist.linear.x;
         double z = msg->twist.angular.z;
@@ -122,24 +125,33 @@ class TwistToDiffDriveNode : public rclcpp::Node {
         // diff_drive_pub_->publish(diff_drive_msg);
 
         // publish to the motor controllers
-        auto left_motor_msg = float64msg();
-        left_motor_msg.data = left_motor;
-        motor_speed_left_pub_->publish(left_motor_msg);
+        {
+            auto left_motor_msg = float64msg();
+            left_motor_msg.data = left_motor;
+            motor_speed_left_pub_->publish(left_motor_msg);
+        }
 
-        auto right_motor_msg = float64msg();
-        right_motor_msg.data = right_motor;
-        motor_speed_right_pub_->publish(right_motor_msg);
+        {
+            auto right_motor_msg = float64msg();
+            right_motor_msg.data = right_motor;
+            motor_speed_right_pub_->publish(right_motor_msg);
+        }
     }
 };
 } // namespace arc
 
 int main(int argc, char **argv) {
-    printf("Starting twist_to_diff_drive_node");
     rclcpp::init(argc, argv);
 
-    auto node = std::make_shared<arc::TwistToDiffDriveNode>();
+    std::printf("Starting twist_to_diff_drive_node\n");
 
-    rclcpp::spin(node);
+    rclcpp::executors::MultiThreadedExecutor executor;
+
+    auto node = std::make_shared<arc::TwistToDiffDriveNode>();
+    executor.add_node(node);
+
+    executor.spin();
+    // rclcpp::spin(node);
     rclcpp::shutdown();
 
     return 0;
