@@ -22,13 +22,17 @@ find_package(geometry_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-set(MSG_FILES
-  "msg/DiffDrive.msg"
-)
+# get all files with .msg extension using a file glob
+file(GLOB_RECURSE MSG_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "msg/*.msg")
+
+# print each file to the console
+foreach(MSG_FILE ${MSG_FILES})
+  message(STATUS "Found message file: ${MSG_FILE}")
+endforeach()
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${MSG_FILES}
-  DEPENDENCIES builtin_interfaces
+  DEPENDENCIES builtin_interfaces std_msgs
 )
 
 ament_export_dependencies(rosidl_default_runtime)
