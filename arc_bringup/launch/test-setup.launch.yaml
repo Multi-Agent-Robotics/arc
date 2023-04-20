@@ -9,8 +9,8 @@ launch:
     file: $(find-pkg-share arc_teleop)/launch/ds4_twist.launch.yaml
 
 #   # Fire up the VESC driver nodes
-# - include:
-#     file: $(find-pkg-share arc_bringup)/launch/vesc.launch.py
+- include:
+    file: $(find-pkg-share arc_bringup)/launch/vesc.launch.py
 
   # Twist to diff drive
 - node:
@@ -23,10 +23,14 @@ launch:
     pkg: arc_base
     exec: low_level_motor_controller
     name: low_level_motor_controller_left
+    output: screen
     param:
     -
         name: "motor_id"
         value: "left"
+    -
+        name: "controller_rate"
+        value: 10
 
 - node:
     pkg: arc_base
@@ -36,3 +40,6 @@ launch:
     -
         name: "motor_id"
         value: "right"
+    -
+        name: "controller_rate"
+        value: 10

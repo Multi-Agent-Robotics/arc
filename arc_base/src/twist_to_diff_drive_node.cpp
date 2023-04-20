@@ -21,6 +21,8 @@ constexpr double WHEEL_T = 60.0;
 constexpr double TO_RPM = 900; // todo explain
 constexpr double GEARING = (MOTOR_T / WHEEL_T);
 
+enum class MotorSide { LEFT, RIGHT };
+
 class DifferentialDrive {
   private:
     double wheel_base_;
@@ -75,30 +77,53 @@ class DifferentialDrive {
 
 class TwistToDiffDriveNode : public rclcpp::Node {
   public:
-    TwistToDiffDriveNode()
-        : Node("twist_to_diff_drive_node"),
+    TwistToDiffDriveNode(double rate)
+        : Node("twist_to_diff_drive_node"), rate_{rate},
           diff_drive_model_(0.224, 0.15, GEARING, 1) {
         // Create a DifferentialDrive object with a wheel base of 224mm and a
         // wheel radius of 150mm
 
+        // twist command subscriber
         twist_sub_ = this->create_subscription<TwistStampedMsg>(
             "cmd_vel", 10,
             std::bind(&TwistToDiffDriveNode::twist_cb, this, _1));
 
+        // motor target speed publishers
         motor_speed_left_pub_ = this->create_publisher<float64msg>(
-            "motor_right/target/motor/speed", 10);
-        motor_speed_left_pub_ = this->create_publisher<float64msg>(
-            "motor_left/target/motor/speed", 10);
+            "motor_right/target/motor/speed", rclcpp::QoS(10).reliable());
+        motor_speed_right_pub_ = this->create_publisher<float64msg>(
+            "motor_left/target/motor/speed", rclcpp::QoS(10).reliable());
+    }
+
+    void spin() {
+        while (rclcpp::ok()) {
+            // publish the left and right motor velocities
+            if (publish_motor_speed(MotorSide::LEFT, left_motor_speed_)) {
+                // RCLCPP_INFO(this->get_logger(), "Published left motor speed: %0.5f", left_motor_speed_);
+            }
+            rclcpp::spin_some(this->get_node_base_interface());
+            rate_.sleep();
+
+            if (publish_motor_speed(MotorSide::RIGHT, right_motor_speed_)) {
+                // RCLCPP_INFO(this->get_logger(), "Published right motor speed: %0.5f", right_motor_speed_);
+            }
+            rclcpp::spin_some(this->get_node_base_interface());
+            rate_.sleep();
+        }
     }
 
   private:
+    rclcpp::Rate rate_;
     Subscriber<TwistStampedMsg>::SharedPtr twist_sub_;
     Publisher<float64msg>::SharedPtr motor_speed_left_pub_;
     Publisher<float64msg>::SharedPtr motor_speed_right_pub_;
     DifferentialDrive diff_drive_model_;
 
-    void twist_cb(const TwistStampedMsg::SharedPtr msg) const {
-        RCLCPP_INFO(this->get_logger(), "Received twist:\ntwist.linear.x = %.5f\ntwist.angular.z = %.5f", msg->twist.linear.x, msg->twist.angular.z);
+    double left_motor_speed_;
+    double right_motor_speed_;
+
+    void twist_cb(const TwistStampedMsg::SharedPtr msg) {
+        // RCLCPP_INFO(this->get_logger(), "Received twist:\ntwist.linear.x = %.5f\ntwist.angular.z = %.5f", msg->twist.linear.x, msg->twist.angular.z);
         // Calculate the left and right wheel velocities
         double x = msg->twist.linear.x;
         double z = msg->twist.angular.z;
@@ -113,8 +138,10 @@ class TwistToDiffDriveNode : public rclcpp::Node {
 
         auto wheel_velocities = diff_drive_model_.calculate_wheel_velocities(
             wheel_relations.first, wheel_relations.second);
-        double left_motor = wheel_velocities.first;
-        double right_motor = wheel_velocities.second;
+        // double left_motor = wheel_velocities.first;
+        // double right_motor = wheel_velocities.second;
+        left_motor_speed_ = wheel_velocities.first;
+        right_motor_speed_ = wheel_velocities.second;
 
         // RCLCPP_INFO(this->get_logger(), "\nmotor_right: %0.5f\nmotor_left:
         // %0.5f", left_motor, right_motor); Publish the left and right motor
@@ -125,17 +152,29 @@ class TwistToDiffDriveNode : public rclcpp::Node {
         // diff_drive_pub_->publish(diff_drive_msg);
 
         // publish to the motor controllers
-        {
-            auto left_motor_msg = float64msg();
-            left_motor_msg.data = left_motor;
-            motor_speed_left_pub_->publish(left_motor_msg);
-        }
+        // {
+        //     auto left_motor_msg = float64msg();
+        //     left_motor_msg.data = left_motor;
+        //     motor_speed_left_pub_->publish(left_motor_msg);
+        // }
+        // {
+        //     auto right_motor_msg = float64msg();
+        //     right_motor_msg.data = right_motor;
+        //     motor_speed_right_pub_->publish(right_motor_msg);
+        // }
+    }
 
-        {
-            auto right_motor_msg = float64msg();
-            right_motor_msg.data = right_motor;
-            motor_speed_right_pub_->publish(right_motor_msg);
+    bool publish_motor_speed(MotorSide motor, double speed) const {
+        auto motor_msg = float64msg();
+        motor_msg.data = speed;
+        if (motor == MotorSide::LEFT) {
+            motor_speed_left_pub_->publish(motor_msg);
+        } else if (motor == MotorSide::RIGHT) {
+            motor_speed_right_pub_->publish(motor_msg);
+        } else {
+            return false;
         }
+        return true;
     }
 };
 } // namespace arc
@@ -145,12 +184,13 @@ int main(int argc, char **argv) {
 
     std::printf("Starting twist_to_diff_drive_node\n");
 
-    rclcpp::executors::MultiThreadedExecutor executor;
+    // rclcpp::executors::MultiThreadedExecutor executor;
 
-    auto node = std::make_shared<arc::TwistToDiffDriveNode>();
-    executor.add_node(node);
+    auto node = std::make_shared<arc::TwistToDiffDriveNode>(10);
+    node->spin();
+    // executor.add_node(node);
 
-    executor.spin();
+    // executor.spin();
     // rclcpp::spin(node);
     rclcpp::shutdown();
 

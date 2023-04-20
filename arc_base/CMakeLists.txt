@@ -18,7 +18,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 
-set(SHARED_AMENT_DEPS rclcpp arc_msgs vesc_msgs geometry_msgs)
+set(SHARED_AMENT_DEPS rclcpp arc_msgs vesc_msgs geometry_msgs std_msgs)
 foreach(ament_deps ${SHARED_AMENT_DEPS})
     find_package(${ament_deps} REQUIRED) 
 endforeach()
