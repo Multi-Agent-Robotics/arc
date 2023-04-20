@@ -1,108 +1,171 @@
 #include <functional>
 
-#include "rclcpp/rclcpp.hpp"
+#include "ros2/ros2.hpp"
 
-#include "geometry_msgs/msg/twist_stamped.hpp"
 #include "arc_msgs/msg/motor_controller_status.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include <vesc_msgs/msg/vesc_state_stamped.hpp>
 
+#include <functional>
 #include <iostream>
+#include <vector>
+
+template <typename T> using Vec = std::vector<T>;
+
+using String = std::string;
+
+// A utility function that takes a variadic number of strings
+// and concatenates them into a single string formatted as a ros2 topic path
+template <typename... Args> String format_topic_path(Args... args) {
+    Vec<String> topic_path = {args...};
+    String topic_path_str = "";
+    for (auto &topic : topic_path) {
+        topic_path_str += topic + "/";
+    }
+    return topic_path_str;
+}
 
 namespace arc {
 
-using Str = std::string;
+
+using namespace ros2 = rclcpp;
 
 using namespace std::placeholders;
 
-template <typename T> using Publisher = rclcpp::Publisher<T>;
-template <typename T> using Subscriber = rclcpp::Subscription<T>;
+template <typename T> using Publisher = ros2::Publisher<T>;
+template <typename T> using Subscriber = ros2::Subscription<T>;
 
 using TwistStampedMsg = geometry_msgs::msg::TwistStamped;
 using VescStateStampedMsg = vesc_msgs::msg::VescStateStamped;
-using float64msg = std_msgs::msg::Float64;
+using Float64Msg = std_msgs::msg::Float64;
 using MotorControllerStatusMsg = arc_msgs::msg::MotorControllerStatus;
 
-class MotorController : public rclcpp::Node {
+class MotorController : public ros2::Node {
   private:
     double kp_;
     double ki_;
     double kd_;
-    rclcpp::Time time_prev_;
+    ros2::Time time_prev_;
     double control_ki_prev_;
     double error_eRPM_prev_;
-    double vesc_state_speed_;
+    VescStateStampedMsg vesc_state_;
+    String output_mode_;
 
-    float64msg msg_speed_;
+    Float64Msg msg_speed_;
     MotorControllerStatusMsg msg_status_;
 
+    std::function<double(VescStateStampedMsg::SharedPtr)> get_sensor_value_;
+    std::function<double(Float64Msg::SharedPtr)> get_target_value_;
+
     // ros
-    rclcpp::TimerBase::SharedPtr timer_status_;
-    rclcpp::TimerBase::SharedPtr timer_speed_;
+    ros2::TimerBase::SharedPtr timer_status_;
+    ros2::TimerBase::SharedPtr timer_speed_;
     Subscriber<VescStateStampedMsg>::SharedPtr vesc_state_sub_;
-    Subscriber<float64msg>::SharedPtr diff_drive_sub_;
-    Publisher<float64msg>::SharedPtr motor_pub_;
+    Subscriber<Float64Msg>::SharedPtr diff_drive_sub_;
+    Publisher<Float64Msg>::SharedPtr motor_pub_;
     Publisher<MotorControllerStatusMsg>::SharedPtr status_pub_;
 
   public:
-    MotorController(double kp, double ki, double kd)
-        : Node("motor_controller"), kp_{kp}, ki_{ki}, kd_{kd},
-          control_ki_prev_{0.0}, error_eRPM_prev_{0.0}, msg_speed_{},
-          msg_status_{} {
+    MotorController()
+        : Node("motor_controller"), control_ki_prev_{0.0},
+          error_eRPM_prev_{0.0}, msg_speed_{}, msg_status_{} {
 
         time_prev_ = this->get_clock()->now();
+
+        // ROS PARAMETERS
         this->declare_parameter("motor_id");
-        auto motor_id_param = this->get_parameter("motor_id");
-        std::string motor_id = motor_id_param.as_string();
-        // if (motor_id != Str("left") || motor_id != Str("right")) {
-        //     RCLCPP_ERROR(this->get_logger(), "motor_id != \"left\" | \"right\", motor_id: %s", motor_id.c_str());
-        //     rclcpp::shutdown();
-        // } 
+        const String motor_id = this->get_parameter("motor_id").as_string();
+        if (motor_id != "left" || motor_id != "right") {
+            RCLCPP_ERROR(this->get_logger(), "motor_id != \"left\" |
+            \"right\", motor_id: %s", motor_id.c_str());
+            ros2::shutdown();
+        }
 
         this->declare_parameter("controller_rate");
-        auto controller_rate_param = this->get_parameter("controller_rate");
-        int controller_rate = controller_rate_param.as_int();
-            
-        std::string motor_prefix = "motor_" + motor_id;
-        // RCLCPP_INFO(this->get_logger(), "motor_prefix: %s\n", motor_prefix.c_str());
+        int controller_rate = this->get_parameter("controller_rate").as_int();
 
-        std::string diff_drive_topic =
-            motor_prefix + std::string("/target/motor/speed");
-        diff_drive_sub_ = this->create_subscription<float64msg>(
-            diff_drive_topic, 10, std::bind(&MotorController::step, this, std::placeholders::_1));
+        this->declare_parameter("output_mode");
+        output_mode_ = this->get_parameter("output_mode").as_string();
 
-        std::string motor_topic = motor_prefix + "/commands/motor/speed";
-        motor_pub_ = this->create_publisher<float64msg>(motor_topic, rclcpp::QoS(10).reliable());
+        // pid values from param
+        this->declare_parameter("kp");
+        kp_ = this->get_parameter("kp").as_double();
+        this->declare_parameter("ki");
+        ki_ = this->get_parameter("ki").as_double();
+        this->declare_parameter("kd");
+        kd_ = this->get_parameter("kd").as_double();
+        // ------------------
 
-        std::string status_topic = motor_prefix + "/controller/status";
-        status_pub_ = this->create_publisher<MotorControllerStatusMsg>(status_topic, rclcpp::QoS(10).reliable());
+        if (output_mode_ == "speed") {
+            get_sensor_value_ = [](VescStateStampedMsg::SharedPtr msg) {
+                return msg->state.speed;
+            };
+            get_target_value_ = [](Float64Msg::SharedPtr msg) {
+                double value = msg->data;
+                // do conversion from m/s to eRPM
+                double wheel_circumference = 0.15 * 2 * M_PI;
+                double gear_ratio = 1.0 / 4.0;
+                double motor_poles = 14.0;
+                double erpm_per_sec = value / (wheel_circumference *
+                                               gear_ratio * motor_poles / 2.0);
 
-        std::string state_topic = motor_prefix + "/sensors/core";
+                return value;
+            };
+        } else if (output_mode_ == "current") {
+            get_sensor_value_ = [](VescStateStampedMsg::SharedPtr msg) {
+                return msg->state.current_motor;
+            };
+            get_target_value_ = [](Float64Msg::SharedPtr msg) {
+                double value = msg->data;
+                // do conversion from m/s to current (amps)
+
+                return value;
+            };
+        } else {
+            RCLCPP_ERROR(
+                this->get_logger(),
+                "output_mode_ != \"speed\" | \"current\", output_mode_: %s",
+                output_mode_.c_str());
+            ros2::shutdown();
+        }
+
+        const String motor_prefix = "motor_" + motor_id;
+
+        const String diff_drive_topic =
+            format_topic_path(motor_prefix, "target", "motor", output_mode_);
+        diff_drive_sub_ = this->create_subscription<Float64Msg>(
+            diff_drive_topic, 10, std::bind(&MotorController::step, this, _1));
+
+        const String motor_topic =
+            format_topic_path(motor_prefix, "commands", "motor", output_mode_);
+        motor_pub_ = this->create_publisher<Float64Msg>(
+            motor_topic, ros2::QoS(10).reliable());
+
+        const String status_topic =
+            format_topic_path(motor_prefix, "controller", "status");
+        status_pub_ = this->create_publisher<MotorControllerStatusMsg>(
+            status_topic, ros2::QoS(10).reliable());
+
+        const String state_topic =
+            format_topic_path(motor_prefix, "sensors", "core");
         vesc_state_sub_ = this->create_subscription<VescStateStampedMsg>(
             state_topic, 10,
-            std::bind(&MotorController::vesc_state_cb, this, _1));
+            [this](VescStateStampedMsg::SharedPtr msg) { vesc_state_ = *msg; });
 
+        const auto cooldown = std::chrono::milliseconds(1000 / controller_rate);
         timer_speed_ = this->create_wall_timer(
-            std::chrono::milliseconds(1000 / controller_rate), [this]() {
-                // RCLCPP_INFO(this->get_logger(), "msg_speed_.data: %f\n", msg_speed_.data);
-                motor_pub_->publish(msg_speed_);
-            });
-        
+            cooldown, [this]() { motor_pub_->publish(msg_speed_); });
+
         timer_status_ = this->create_wall_timer(
-            std::chrono::milliseconds(1000 / controller_rate), [this]() {
-                // RCLCPP_INFO(this->get_logger(), "msg_status_.control.target: %f\n", msg_status_.control.target);
-                status_pub_->publish(msg_status_);
-            });
+            cooldown, [this]() { status_pub_->publish(msg_status_); });
     }
 
-    void vesc_state_cb(const VescStateStampedMsg::SharedPtr msg) {
-        vesc_state_speed_ = msg->state.speed;
-    }
-
-    void step(const float64msg::SharedPtr msg) {
+    void step(const Float64Msg::SharedPtr msg) {
         double target_eRPM = msg->data;
-        double actual_eRPM = vesc_state_speed_;
-        // std::printf("target_eRPM: %f, actual_eRPM: %f\n", target_eRPM, actual_eRPM);
+        double actual_eRPM = vesc_state_;
+        // std::printf("target_eRPM: %f, actual_eRPM: %f\n", target_eRPM,
+        // actual_eRPM);
 
         auto time_now = this->get_clock()->now();
         auto delta_time = (time_now - time_prev_).nanoseconds() * 1e-9;
@@ -112,7 +175,8 @@ class MotorController : public rclcpp::Node {
         double control_kp = kp_ * error_eRPM;
         double control_ki = control_ki_prev_ + ki_ * error_eRPM;
         double control_kd = (error_eRPM_prev_ - error_eRPM) * kd_;
-        // std::printf("control_kp: %f, control_ki: %f, control_kd: %f\n", control_kp, control_ki, control_kd);
+        // std::printf("control_kp: %f, control_ki: %f, control_kd: %f\n",
+        // control_kp, control_ki, control_kd);
 
         control_ki_prev_ = control_ki;
         error_eRPM_prev_ = error_eRPM;
@@ -130,22 +194,15 @@ class MotorController : public rclcpp::Node {
 };
 } // namespace arc
 
-
 int main(int argc, char **argv) {
     using namespace arc;
 
-    // printf("Starting motor controller node");
-    rclcpp::init(argc, argv);
+    ros2::init(argc, argv);
 
-    // Taken from VESC Tool
-    constexpr double kp = 0.004;
-    constexpr double ki = 0.004;
-    constexpr double kd = 0.0001;
+    auto node = std::make_shared<arc::MotorController>();
 
-    auto node = std::make_shared<arc::MotorController>(kp, ki, kd);
-
-    rclcpp::spin(node);
-    rclcpp::shutdown();
+    ros2::spin(node);
+    ros2::shutdown();
 
     return 0;
 }

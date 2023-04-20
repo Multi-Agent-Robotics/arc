@@ -14,7 +14,7 @@ template <typename T> using Publisher = rclcpp::Publisher<T>;
 template <typename T> using Subscriber = rclcpp::Subscription<T>;
 
 using TwistStampedMsg = geometry_msgs::msg::TwistStamped;
-using float64msg = std_msgs::msg::Float64;
+using Float64Msg = std_msgs::msg::Float64;
 
 constexpr double MOTOR_T = 15.0;
 constexpr double WHEEL_T = 60.0;
@@ -89,9 +89,9 @@ class TwistToDiffDriveNode : public rclcpp::Node {
             std::bind(&TwistToDiffDriveNode::twist_cb, this, _1));
 
         // motor target speed publishers
-        motor_speed_left_pub_ = this->create_publisher<float64msg>(
+        motor_speed_left_pub_ = this->create_publisher<Float64Msg>(
             "motor_right/target/motor/speed", rclcpp::QoS(10).reliable());
-        motor_speed_right_pub_ = this->create_publisher<float64msg>(
+        motor_speed_right_pub_ = this->create_publisher<Float64Msg>(
             "motor_left/target/motor/speed", rclcpp::QoS(10).reliable());
     }
 
@@ -115,8 +115,8 @@ class TwistToDiffDriveNode : public rclcpp::Node {
   private:
     rclcpp::Rate rate_;
     Subscriber<TwistStampedMsg>::SharedPtr twist_sub_;
-    Publisher<float64msg>::SharedPtr motor_speed_left_pub_;
-    Publisher<float64msg>::SharedPtr motor_speed_right_pub_;
+    Publisher<Float64Msg>::SharedPtr motor_speed_left_pub_;
+    Publisher<Float64Msg>::SharedPtr motor_speed_right_pub_;
     DifferentialDrive diff_drive_model_;
 
     double left_motor_speed_;
@@ -153,19 +153,19 @@ class TwistToDiffDriveNode : public rclcpp::Node {
 
         // publish to the motor controllers
         // {
-        //     auto left_motor_msg = float64msg();
+        //     auto left_motor_msg = Float64Msg();
         //     left_motor_msg.data = left_motor;
         //     motor_speed_left_pub_->publish(left_motor_msg);
         // }
         // {
-        //     auto right_motor_msg = float64msg();
+        //     auto right_motor_msg = Float64Msg();
         //     right_motor_msg.data = right_motor;
         //     motor_speed_right_pub_->publish(right_motor_msg);
         // }
     }
 
     bool publish_motor_speed(MotorSide motor, double speed) const {
-        auto motor_msg = float64msg();
+        auto motor_msg = Float64Msg();
         motor_msg.data = speed;
         if (motor == MotorSide::LEFT) {
             motor_speed_left_pub_->publish(motor_msg);

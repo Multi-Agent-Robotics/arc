@@ -18,7 +18,8 @@
         "/home/orin/ros2_ws/src/orbslam3/include/**",
         "/home/orin/ros2_ws/src/orbslam3_msgs/include/**",
         "/home/orin/ros2_ws/src/rnd-lugbot/include/**",
-        "/usr/include/**"
+        "/usr/include/**",
+        "/opt/ros/foxy/include/**"
       ],
       "name": "ROS",
       "intelliSenseMode": "gcc-arm64",
