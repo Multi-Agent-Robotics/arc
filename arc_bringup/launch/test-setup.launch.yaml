@@ -35,13 +35,28 @@ launch:
         name: "output_mode"
         value: "speed"
     -
-        name: "kp"
+        name: "current_max"
+        value: 2
+    -
+        name: "speed_max"
+        value: 100
+    -
+        name: "kp_speed"
         value: 0.004
     -
-        name: "ki"
+        name: "ki_speed"
         value: 0.004
     -
-        name: "kd"
+        name: "kd_speed"
+        value: 0.0001
+    -
+        name: "kp_current"
+        value: 0.004
+    -
+        name: "ki_current"
+        value: 0.004
+    -
+        name: "kd_current"
         value: 0.0001
 
 - node:
@@ -59,11 +74,26 @@ launch:
         name: "output_mode"
         value: "speed"
     -
-        name: "kp"
+        name: "current_max"
+        value: 2
+    -
+        name: "speed_max"
+        value: 100
+    -
+        name: "kp_speed"
         value: 0.004
     -
-        name: "ki"
+        name: "ki_speed"
         value: 0.004
     -
-        name: "kd"
+        name: "kd_speed"
+        value: 0.0001
+    -
+        name: "kp_current"
+        value: 0.004
+    -
+        name: "ki_current"
+        value: 0.004
+    -
+        name: "kd_current"
         value: 0.0001
