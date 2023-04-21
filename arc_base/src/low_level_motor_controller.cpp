@@ -199,8 +199,9 @@ class MotorController : public ros2::Node {
         // publish control and status at the controller rate
         timer_control_ = this->create_wall_timer(
             cooldown, [this]() {
-                // update message
-                msg_control_.data = control_pid_.p + control_pid_.i + control_pid_.d;
+                // update message and clamp to max output
+                double output = control_pid_.p + control_pid_.i + control_pid_.d;
+                msg_control_.data = output > max_output_ ? max_output_ : output;
 
                 motor_pub_->publish(msg_control_);
             });
