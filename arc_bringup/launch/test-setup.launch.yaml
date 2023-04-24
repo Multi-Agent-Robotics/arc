@@ -36,10 +36,10 @@ launch:
         value: "speed"
     -
         name: "current_max"
-        value: 2
+        value: 2.0
     -
         name: "speed_max"
-        value: 23000
+        value: 23000.0
     -
         name: "acc_max"
         value: 0.1
@@ -78,10 +78,10 @@ launch:
         value: "speed"
     -
         name: "current_max"
-        value: 2
+        value: 2.0
     -
         name: "speed_max"
-        value: 23000
+        value: 23000.0
     -
         name: "acc_max"
         value: 0.1

@@ -29,14 +29,6 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-
-file(GLOB_RECURSE launch_files "${CMAKE_CURRENT_SOURCE_DIR}/launch/*")
-file(GLOB_RECURSE config_files "${CMAKE_CURRENT_SOURCE_DIR}/config/*")
-
-foreach(launch_file ${launch_files})
-  message(STATUS "Found launch file: ${launch_file}")
-endforeach()
-
 install(
     DIRECTORY launch
     DESTINATION share/${PROJECT_NAME}
