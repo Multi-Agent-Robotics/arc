@@ -1,17 +1,12 @@
-#include "rclcpp/rclcpp.hpp"
-#include "rclcpp/executor.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
+#include "rclcpp/executor.hpp"
+#include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include <cmath>
 #include <cstdio>
 #include <iostream>
 
 namespace arc {
-
-using namespace std::placeholders;
-
-template <typename T> using Publisher = rclcpp::Publisher<T>;
-template <typename T> using Subscriber = rclcpp::Subscription<T>;
 
 using TwistStampedMsg = geometry_msgs::msg::TwistStamped;
 using Float64Msg = std_msgs::msg::Float64;
@@ -99,13 +94,15 @@ class TwistToDiffDriveNode : public rclcpp::Node {
         while (rclcpp::ok()) {
             // publish the left and right motor velocities
             if (publish_motor_speed(MotorSide::LEFT, left_motor_speed_)) {
-                // RCLCPP_INFO(this->get_logger(), "Published left motor speed: %0.5f", left_motor_speed_);
+                // RCLCPP_INFO(this->get_logger(), "Published left motor speed:
+                // %0.5f", left_motor_speed_);
             }
             rclcpp::spin_some(this->get_node_base_interface());
             rate_.sleep();
 
             if (publish_motor_speed(MotorSide::RIGHT, right_motor_speed_)) {
-                // RCLCPP_INFO(this->get_logger(), "Published right motor speed: %0.5f", right_motor_speed_);
+                // RCLCPP_INFO(this->get_logger(), "Published right motor speed:
+                // %0.5f", right_motor_speed_);
             }
             rclcpp::spin_some(this->get_node_base_interface());
             rate_.sleep();
@@ -123,8 +120,9 @@ class TwistToDiffDriveNode : public rclcpp::Node {
     double right_motor_speed_;
 
     void twist_cb(const TwistStampedMsg::SharedPtr msg) {
-        // RCLCPP_INFO(this->get_logger(), "Received twist:\ntwist.linear.x = %.5f\ntwist.angular.z = %.5f", msg->twist.linear.x, msg->twist.angular.z);
-        // Calculate the left and right wheel velocities
+        // RCLCPP_INFO(this->get_logger(), "Received twist:\ntwist.linear.x =
+        // %.5f\ntwist.angular.z = %.5f", msg->twist.linear.x,
+        // msg->twist.angular.z); Calculate the left and right wheel velocities
         double x = msg->twist.linear.x;
         double z = msg->twist.angular.z;
         auto wheel_relations =
