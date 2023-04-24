@@ -22,31 +22,38 @@ CMAP = {
     "nc": "\033[0m"
 }
 
+
 def green(text):
     return CMAP["green"] + text + CMAP["nc"]
+
 
 def red(text):
     return CMAP["red"] + text + CMAP["nc"]
 
 
 def include_yaml_launch_file(launch_file_path: Path) -> IncludeLaunchDescription:
-    assert launch_file_path.exists(), f"Launch file {launch_file_path} does not exist"
+    assert launch_file_path.exists(
+    ), f"Launch file {launch_file_path} does not exist"
     return IncludeLaunchDescription(
         YAMLLaunchDescriptionSource(
             launch_file_path
         )
     )
 
+
 def include_xml_launch_file(launch_file_path: Path) -> IncludeLaunchDescription:
-    assert launch_file_path.exists(), f"Launch file {launch_file_path} does not exist"
+    assert launch_file_path.exists(
+    ), f"Launch file {launch_file_path} does not exist"
     return IncludeLaunchDescription(
         XMLLaunchDescriptionSource(
             launch_file_path
         )
     )
 
+
 def include_python_launch_file(launch_file_path: Path) -> IncludeLaunchDescription:
-    assert launch_file_path.exists(), f"Launch file {launch_file_path} does not exist"
+    assert launch_file_path.exists(
+    ), f"Launch file {launch_file_path} does not exist"
     return IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             launch_file_path
@@ -54,25 +61,8 @@ def include_python_launch_file(launch_file_path: Path) -> IncludeLaunchDescripti
     )
 
 
-
 def generate_launch_description():
 
-
-
-    # declare launch arguments
-    # rosbridge_server_launch = DeclareLaunchArgument('rosbridge_server_launch', default_value='$(find rosbridge_server)/launch/rosbridge_websocket_launch.py')
-    # ds4_twist_launch = DeclareLaunchArgument('ds4_twist_launch', default_value='$(find arc_teleop)/launch/ds4_twist.launch.py')
-    # vesc_launch = DeclareLaunchArgument('vesc_launch', default_value='$(find arc_bringup)/launch/vesc.launch.py')
-
-    # include rosbridge_server launch file
-    # rosbridge_server = include_xml_launch_file(
-    #     Path(
-    #         get_package_share_directory('rosbridge_server'))
-    #         / 'launch'
-    #         / 'rosbridge_websocket_launch.xml'
-        
-    # )
-    
     rosbridge_server = IncludeLaunchDescription(
         XMLLaunchDescriptionSource(
             os.path.join(
@@ -92,16 +82,7 @@ def generate_launch_description():
                 'ds4_twist.launch.yaml'
             )
         )
-    )        
-        
-
-    # ds4_twist = include_yaml_launch_file(
-    #     Path(get_package_share_directory('arc_teleop'))
-    #         / 'launch'
-    #         / 'ds4_twist.launch.yaml'
-        
-    # )
-
+    )
     # include vesc launch file
     vesc = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -113,15 +94,6 @@ def generate_launch_description():
         )
     )
 
-    # vesc = include_python_launch_file(
-    #     Path(
-    #         get_package_share_directory('arc_bringup'))
-    #         / 'launch'
-    #         / 'vesc.launch.py'
-        
-    # )
-
-
     # twist to diff drive
     twist_to_diff_drive = Node(
         package='arc_base',
@@ -129,7 +101,6 @@ def generate_launch_description():
         name='twist_to_diff_drive'
     )
 
-    
     config = os.path.join(
         get_package_share_directory('arc_bringup'),
         'config',
@@ -192,7 +163,6 @@ def generate_launch_description():
         ds4_twist,
         vesc,
         twist_to_diff_drive,
+        low_level_motor_controller_right,
         low_level_motor_controller_left,
-        low_level_motor_controller_right
     ])
-

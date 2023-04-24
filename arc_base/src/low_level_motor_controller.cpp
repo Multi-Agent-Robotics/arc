@@ -28,7 +28,8 @@ class MotorController : public ros2::Node {
     // constraints
     double max_output_; // rpm | current limit
     double acc_max_;    // m/s²
-    double output_limited_;
+    double speed_min_;  // rpm
+    double output_limited_ = 0.0;
 
     // control terms
     ros2::Time time_prev_;
@@ -68,6 +69,9 @@ class MotorController : public ros2::Node {
         // ROS PARAMETERS
         this->declare_parameter("motor_id");
         const String motor_id = this->get_parameter("motor_id").as_string();
+        std::fprintf(stderr, "%s: %s\n", magenta("motor_id").c_str(),
+                     motor_id.c_str());
+
         // if (motor_id != "left" || motor_id != "right") {
         //     RCLCPP_WARN_ONCE(this->get_logger(),
         //                  "motor_id != 'left' | 'right', motor_id: %s",
@@ -77,13 +81,22 @@ class MotorController : public ros2::Node {
 
         this->declare_parameter("controller_rate"); // Hz
         int controller_rate = this->get_parameter("controller_rate").as_int();
+        std::fprintf(stderr, "%s: %d\n", magenta("controller_rate").c_str(),
+                     controller_rate);
 
         this->declare_parameter("output_mode"); // speed | current
         output_mode_ = this->get_parameter("output_mode").as_string();
+        std::fprintf(stderr, "%s: %s\n", magenta("output_mode").c_str(),
+                     output_mode_.c_str());
 
         this->declare_parameter("acc_max"); // m/s²
         acc_max_ = this->get_parameter("acc_max").as_double();
-        // ------------------
+        std::fprintf(stderr, "%s: %f\n", magenta("acc_max").c_str(), acc_max_);
+
+        this->declare_parameter("speed_min"); // m/s²
+        speed_min_ = this->get_parameter("speed_min").as_double();
+        std::fprintf(stderr, "%s: %f\n", magenta("speed_min").c_str(),
+                     speed_min_);
 
         if (output_mode_ == "speed") {
             get_sensor_value_ = [](VescStateStampedMsg &msg) -> double {
@@ -92,27 +105,37 @@ class MotorController : public ros2::Node {
             get_target_value_ = [](Float64Msg &msg) -> double {
                 double target_velocity = msg.data;
                 // do conversion from m/s to eRPM
-                double wheel_circumference = 0.15 * 2 * M_PI;
-                double gear_ratio = 1.0 / 4.0;
-                double motor_poles = 14.0;
-                double erpm_per_sec =
-                    target_velocity /
-                    (wheel_circumference * gear_ratio * motor_poles / 2.0);
+                // double wheel_circumference = 0.15 * 2 * M_PI;
+                // double gear_ratio = 1.0 / 4.0;
+                // double motor_poles = 14.0;
+                // double erpm_per_sec =
+                //     target_velocity /
+                //     (wheel_circumference * gear_ratio * motor_poles / 2.0);
 
-                return erpm_per_sec;
+                // return erpm_per_sec;
+                return target_velocity;
             };
 
             // pid values from param
             this->declare_parameter("kp_speed");
             pid_.p = this->get_parameter("kp_speed").as_double();
+            std::fprintf(stderr, "%s: %f\n", magenta("kp_speed").c_str(),
+                         pid_.p);
             this->declare_parameter("ki_speed");
             pid_.i = this->get_parameter("ki_speed").as_double();
+            std::fprintf(stderr, "%s: %f\n", magenta("ki_speed").c_str(),
+                         pid_.i);
+
             this->declare_parameter("kd_speed");
             pid_.d = this->get_parameter("kd_speed").as_double();
+            std::fprintf(stderr, "%s: %f\n", magenta("kd_speed").c_str(),
+                         pid_.d);
 
             // max output from param
             this->declare_parameter("speed_max");
             max_output_ = this->get_parameter("speed_max").as_double();
+            std::fprintf(stderr, "%s: %f\n", magenta("speed_max").c_str(),
+                         max_output_);
         } else if (output_mode_ == "current") {
             get_sensor_value_ = [](VescStateStampedMsg &msg) {
                 return msg.state.current_motor;
@@ -201,17 +224,18 @@ class MotorController : public ros2::Node {
 
         timer_status_ = this->create_wall_timer(cooldown, [this]() {
             // update message
+
             msg_status_.control.target = target_;
             msg_status_.control.actual = actual_;
             msg_status_.control.error = error_;
             msg_status_.pid.p = control_pid_.p;
             msg_status_.pid.i = control_pid_.i;
             msg_status_.pid.d = control_pid_.d;
+            msg_status_.output = output_limited_;
 
             status_pub_->publish(msg_status_);
+            // RCLCPP_DEBUG(this->get_logger(), "published status");
         });
-
-        this->list_parameters({""}, 10);
     }
 
     void step() {
@@ -230,13 +254,27 @@ class MotorController : public ros2::Node {
         double output = control_pid_.p + control_pid_.i + control_pid_.d;
         double output_prev =
             control_pid_prev_.p + control_pid_prev_.i + control_pid_prev_.d;
-        output_limited_ = std::max(
-            -delta_acc_max, std::min(delta_acc_max, output - output_prev));
+        output_limited_ =
+            actual_ + output +
+            std::max(-delta_acc_max,
+                     std::min(delta_acc_max, output - output_prev));
+
+        // The motor will NOT rotate when the output is between [-900, 900]
+        // eRPM. Since we need the a measurement of the current eRPM, to compute
+        // a difference from the target value, we need to adjust the minimum
+        // output value to be greater than 900 or less than -900.
+        if (std::abs(output_limited_) < speed_min_) {
+            output_limited_ =
+                output_limited_ == 0
+                    ? 0
+                    : (output_limited_ > 0 ? speed_min_ : -speed_min_);
+        }
 
         // update previous values
-        control_pid_prev_.p = control_pid_.p;
-        control_pid_prev_.i = control_pid_.i;
-        control_pid_prev_.d = control_pid_.d;
+        control_pid_prev_ = control_pid_;
+        // control_pid_prev_.p = control_pid_.p;
+        // control_pid_prev_.i = control_pid_.i;
+        // control_pid_prev_.d = control_pid_.d;
 
         error_prev_ = error_;
         time_prev_ = time_now;

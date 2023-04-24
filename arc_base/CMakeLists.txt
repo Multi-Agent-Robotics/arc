@@ -18,6 +18,9 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 
+# include "include" directory
+include_directories(include)
+
 set(SHARED_AMENT_DEPS rclcpp arc_msgs vesc_msgs geometry_msgs std_msgs nav_msgs)
 foreach(ament_deps ${SHARED_AMENT_DEPS})
     find_package(${ament_deps} REQUIRED) 
@@ -37,9 +40,13 @@ add_executable(low_level_motor_controller src/low_level_motor_controller.cpp)
 ament_target_dependencies(low_level_motor_controller ${SHARED_AMENT_DEPS})
 # ament_target_dependencies(low_level_motor_controller rclcpp arc_msgs vesc_msgs geometry_msgs)
 
+add_executable(pos_controller src/pos_controller.cpp)
+ament_target_dependencies(pos_controller ${SHARED_AMENT_DEPS})
+
 install(TARGETS
   twist_to_diff_drive_node
   low_level_motor_controller
+  pos_controller
   DESTINATION lib/${PROJECT_NAME}
 )
 

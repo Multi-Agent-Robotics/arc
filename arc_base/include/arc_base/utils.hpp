@@ -9,8 +9,9 @@ auto green(std::string s) { return "\033[1;32m" + s + "\033[0m"; }
 auto red(std::string s) { return "\033[1;31m" + s + "\033[0m"; }
 auto yellow(std::string s) { return "\033[1;33m" + s + "\033[0m"; }
 auto blue(std::string s) { return "\033[1;34m" + s + "\033[0m"; }
-auto magenta(std::string s) { return "\033[1;35m" + s + "\033[0m"; }
 auto cyan(std::string s) { return "\033[1;36m" + s + "\033[0m"; }
+auto magenta(std::string s) { return "\033[1;35m" + s + "\033[0m"; }
+auto grey(std::string s) { return "\033[1;30m" + s + "\033[0m"; }
 
 #define DBG(msg)                                                               \
     std::cerr << green(__FILE__) << ":" << yellow(std::to_string(__LINE__))    \
@@ -38,14 +39,15 @@ template <typename... Args> auto format_topic_path(Args... args) -> String {
         DBG("topic_path.size() <= 0");
         ros2::shutdown();
     }
+    String topic_path_str = "";
     if (topic_path.size() == 1) {
         topic_path_str = topic_path[0];
     } else {
-        for (int i = 0; i < topic_path.size() - 1; i++) {
+        for (std::size_t i = 0; i < topic_path.size() - 1; i++) {
             topic_path_str += topic_path[i] + "/";
         }
         topic_path_str += topic_path.back();
     }
-    RCLCPP_DEBUG(ros2::get_logger(), "topic: " + yellow(topic_path_str));
+    // RCLCPP_DEBUG(ros2::get_logger(), "topic: " + yellow(topic_path_str));
     return topic_path_str;
 }

@@ -2,6 +2,7 @@
 #include "rclcpp/executor.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float64.hpp"
+#include "arc_base/utils.hpp"
 #include <cmath>
 #include <cstdio>
 #include <iostream>
