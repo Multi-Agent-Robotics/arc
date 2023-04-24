@@ -1,6 +1,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 
+#include "arc_base/utils.hpp"
 #include "arc_msgs/msg/motor_controller_status.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "std_msgs/msg/float64.hpp"
@@ -10,58 +11,7 @@
 #include <iostream>
 #include <vector>
 
-
-auto green(std::string s) { return "\033[1;32m" + s + "\033[0m"; }
-auto red(std::string s) { return "\033[1;31m" + s + "\033[0m"; }
-auto yellow(std::string s) { return "\033[1;33m" + s + "\033[0m"; }
-auto blue(std::string s) { return "\033[1;34m" + s + "\033[0m"; }
-auto magenta(std::string s) { return "\033[1;35m" + s + "\033[0m"; }
-auto cyan(std::string s) { return "\033[1;36m" + s + "\033[0m"; }
-
-#define DBG(msg) std::cerr << green(__FILE__) << ":" << yellow(std::to_string(__LINE__)) << " " << blue(__FUNCTION__) << "() " << magenta(msg) << std::endl;
-
-namespace ros2 = rclcpp;
-using namespace std::placeholders;
-using String = std::string;
-template <typename T> using Vec = std::vector<T>;
-template <typename Return, typename... Args> using Fn = std::function<Return(Args...)>;
-
-
-
-
-// A utility function that takes a variadic number of strings
-// and concatenates them into a single string formatted as a ros2 topic path
-template <typename... Args> auto format_topic_path(Args... args) -> String {
-    const Vec<String> topic_path = {args...};
-    if (! (topic_path.size() > 0)) {
-        DBG("topic_path.size() <= 0");
-        ros2::shutdown();
-    }
-    String topic_path_str = "";
-    if (topic_path.size() == 1) {
-        topic_path_str = topic_path[0];
-    } else {
-        for (int i = 0; i < topic_path.size() - 1; i++) {
-            topic_path_str += topic_path[i] + "/";
-        }
-        topic_path_str += topic_path.back();
-    }
-    RCLCPP_DEBUG(ros2::get_logger(), "topic: " + yellow(topic_path_str));
-    return topic_path_str;
-}
-
 namespace arc {
-
-// pid control struct
-struct PID {
-    double p;
-    double i;
-    double d;
-};
-
-
-template <typename T> using Publisher = ros2::Publisher<T>;
-template <typename T> using Subscriber = ros2::Subscription<T>;
 
 using TwistStampedMsg = geometry_msgs::msg::TwistStamped;
 using VescStateStampedMsg = vesc_msgs::msg::VescStateStamped;
@@ -95,8 +45,8 @@ class MotorController : public ros2::Node {
     MotorControllerStatusMsg msg_status_;
 
     // dynamic functions
-    std::function<double(VescStateStampedMsg&)> get_sensor_value_;
-    std::function<double(Float64Msg&)> get_target_value_;
+    std::function<double(VescStateStampedMsg &)> get_sensor_value_;
+    std::function<double(Float64Msg &)> get_target_value_;
 
     // ros
     ros2::TimerBase::SharedPtr timer_status_;
@@ -109,8 +59,9 @@ class MotorController : public ros2::Node {
 
   public:
     MotorController()
-        : Node("motor_controller"), control_pid_{0.0, 0.0, 0.0}, control_pid_prev_{0.0, 0.0, 0.0}, error_prev_{0.0},
-          msg_control_{}, msg_status_{} {
+        : Node("motor_controller"), control_pid_{0.0, 0.0, 0.0},
+          control_pid_prev_{0.0, 0.0, 0.0}, error_prev_{0.0}, msg_control_{},
+          msg_status_{} {
 
         time_prev_ = this->get_clock()->now();
 
@@ -119,7 +70,8 @@ class MotorController : public ros2::Node {
         const String motor_id = this->get_parameter("motor_id").as_string();
         // if (motor_id != "left" || motor_id != "right") {
         //     RCLCPP_WARN_ONCE(this->get_logger(),
-        //                  "motor_id != 'left' | 'right', motor_id: %s", motor_id.c_str());
+        //                  "motor_id != 'left' | 'right', motor_id: %s",
+        //                  motor_id.c_str());
         //     ros2::shutdown();
         // }
 
@@ -134,10 +86,10 @@ class MotorController : public ros2::Node {
         // ------------------
 
         if (output_mode_ == "speed") {
-            get_sensor_value_ = [](VescStateStampedMsg& msg) -> double {
+            get_sensor_value_ = [](VescStateStampedMsg &msg) -> double {
                 return msg.state.speed;
             };
-            get_target_value_ = [](Float64Msg& msg) -> double {
+            get_target_value_ = [](Float64Msg &msg) -> double {
                 double target_velocity = msg.data;
                 // do conversion from m/s to eRPM
                 double wheel_circumference = 0.15 * 2 * M_PI;
@@ -162,10 +114,10 @@ class MotorController : public ros2::Node {
             this->declare_parameter("speed_max");
             max_output_ = this->get_parameter("speed_max").as_double();
         } else if (output_mode_ == "current") {
-            get_sensor_value_ = [](VescStateStampedMsg& msg) {
+            get_sensor_value_ = [](VescStateStampedMsg &msg) {
                 return msg.state.current_motor;
             };
-            get_target_value_ = [](Float64Msg& msg) {
+            get_target_value_ = [](Float64Msg &msg) {
                 double target_velocity = msg.data;
                 // do conversion from m/s to current (amps)
                 double target_current =
@@ -199,26 +151,24 @@ class MotorController : public ros2::Node {
         const String diff_drive_topic =
             format_topic_path(motor_prefix, "target", "motor", output_mode_);
 
-        RCLCPP_INFO(this->get_logger(), "diff_drive_topic: " + green(diff_drive_topic));
+        RCLCPP_INFO(this->get_logger(),
+                    "diff_drive_topic: " + green(diff_drive_topic));
 
         diff_drive_sub_ = this->create_subscription<Float64Msg>(
-            diff_drive_topic.c_str(),
-            10,
-            [this](Float64Msg::UniquePtr msg) {
+            diff_drive_topic.c_str(), 10, [this](Float64Msg::UniquePtr msg) {
                 this->target_ = this->get_target_value_(*msg);
                 this->actual_ = this->get_sensor_value_(vesc_state_);
-            }
-        );
+            });
 
         const String state_topic =
             format_topic_path(motor_prefix, "sensors", "core");
         RCLCPP_INFO(this->get_logger(), "state_topic: " + green(state_topic));
 
-
         vesc_state_sub_ = this->create_subscription<VescStateStampedMsg>(
             state_topic.c_str(), 10,
-            [this](VescStateStampedMsg::UniquePtr msg) { this->vesc_state_ = *msg; }
-        );
+            [this](VescStateStampedMsg::UniquePtr msg) {
+                this->vesc_state_ = *msg;
+            });
 
         // publishers
         const String motor_topic =
@@ -277,8 +227,7 @@ class MotorController : public ros2::Node {
         // calculate max allowable change in this timeframe
         double delta_acc_max = acc_max_ * delta_time;
         // u_limited(t) = u(t-1) + max(-Δu_max, min(Δu_max, u(t) - u(t-1)))
-        double output =
-            control_pid_.p + control_pid_.i + control_pid_.d;
+        double output = control_pid_.p + control_pid_.i + control_pid_.d;
         double output_prev =
             control_pid_prev_.p + control_pid_prev_.i + control_pid_prev_.d;
         output_limited_ = std::max(
@@ -295,12 +244,12 @@ class MotorController : public ros2::Node {
 };
 } // namespace arc
 
-int main(int argc, char **argv) {
+auto main(int argc, char **argv) -> int {
     using namespace arc;
 
     ros2::init(argc, argv);
 
-    auto node = std::make_shared<arc::MotorController>();
+    auto node = std::make_shared<MotorController>();
 
     ros2::spin(node);
     ros2::shutdown();
