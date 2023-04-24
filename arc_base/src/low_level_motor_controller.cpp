@@ -49,24 +49,31 @@ using MotorControllerStatusMsg = arc_msgs::msg::MotorControllerStatus;
 
 class MotorController : public ros2::Node {
   private:
-    // double kp_;
-    // double ki_;
-    // double kd_;
+    // pid collections
     PID pid_;
     PID control_pid_;
-    double max_output_;
+    PID control_pid_prev_;
+
+    // constraints
+    double max_output_; // rpm | current limit
+    double max_acc_;    // m/s²
+    double output_limited_;
+
+    // control terms
     ros2::Time time_prev_;
     double target_;
     double actual_;
     double error_;
-    double control_ki_prev_;
+    // double control_ki_prev_;
     double error_prev_;
-    VescStateStampedMsg vesc_state_;
     String output_mode_;
 
+    // msgs
+    VescStateStampedMsg vesc_state_;
     Float64Msg msg_control_;
     MotorControllerStatusMsg msg_status_;
 
+    // dynamic functions
     std::function<double(VescStateStampedMsg::SharedPtr)> get_sensor_value_;
     std::function<double(Float64Msg::SharedPtr)> get_target_value_;
 
@@ -95,11 +102,14 @@ class MotorController : public ros2::Node {
             ros2::shutdown();
         }
 
-        this->declare_parameter("controller_rate");
+        this->declare_parameter("controller_rate"); // Hz
         int controller_rate = this->get_parameter("controller_rate").as_int();
 
-        this->declare_parameter("output_mode");
+        this->declare_parameter("output_mode"); // speed | current
         output_mode_ = this->get_parameter("output_mode").as_string();
+
+        this->declare_parameter("max_acc"); // m/s²
+        max_acc_ = this->get_parameter("max_acc").as_double();
         // ------------------
 
         if (output_mode_ == "speed") {
@@ -130,7 +140,6 @@ class MotorController : public ros2::Node {
             // max output from param
             this->declare_parameter("speed_max");
             max_output_ = this->get_parameter("speed_max").as_double();
-
         } else if (output_mode_ == "current") {
             get_sensor_value_ = [](VescStateStampedMsg::SharedPtr msg) {
                 return msg->state.current_motor;
@@ -155,7 +164,6 @@ class MotorController : public ros2::Node {
             // max output from param
             this->declare_parameter("current_max");
             max_output_ = this->get_parameter("current_max").as_double();
-
         } else {
             RCLCPP_ERROR(
                 this->get_logger(),
@@ -201,8 +209,9 @@ class MotorController : public ros2::Node {
         // publish control and status at the controller rate
         timer_control_ = this->create_wall_timer(cooldown, [this]() {
             // update message and clamp to max output
-            double output = control_pid_.p + control_pid_.i + control_pid_.d;
-            msg_control_.data = output > max_output_ ? max_output_ : output;
+            // double output = control_pid_.p + control_pid_.i + control_pid_.d;
+            // msg_control_.data = output > max_output_ ? max_output_ : output;
+            msg_control_.data = output_limited_;
 
             motor_pub_->publish(msg_control_);
         });
@@ -211,7 +220,7 @@ class MotorController : public ros2::Node {
             // update message
             msg_status_.control.target = target_;
             msg_status_.control.actual = actual_;
-            msg_status_.control.error = error;
+            msg_status_.control.error = error_;
             msg_status_.pid.p = control_pid_.p;
             msg_status_.pid.i = control_pid_.i;
             msg_status_.pid.d = control_pid_.d;
@@ -223,15 +232,28 @@ class MotorController : public ros2::Node {
     void step() {
         auto time_now = this->get_clock()->now();
         auto delta_time = (time_now - time_prev_).nanoseconds() * 1e-9;
-        error_ = target_ - actual_ * delta_time; // error over the time step
+        error_ = (target_ - actual_) * delta_time; // error over the time step
 
         // controller pid output terms
-        control_pid_.p = kp_ * error_;
-        control_pid_.i = control_ki_prev_ + ki_ * error_;
-        control_pid_.d = (error_prev_ - error) * kd_;
+        control_pid_.p = pid_.p * error_;
+        control_pid_.i = pid_.i * error_ + control_ki_prev_;
+        control_pid_.d = pid_.d * (error_prev_ - error_);
+
+        // calculate max allowable change in this timeframe
+        double delta_max_acc = max_acc_ * delta_time;
+        // u_limited(t) = u(t-1) + max(-Δu_max, min(Δu_max, u(t) - u(t-1)))
+        output =
+            control_pid_prev_.p + control_pid_prev_.i + control_pid_prev_.d;
+        output_prev =
+            control_pid_prev_.p + control_pid_prev_.i + control_pid_prev_.d;
+        output_limited_ = std::max(
+            -delta_max_acc, std::min(delta_max_acc, output - output_prev));
 
         // update previous values
-        control_ki_prev_ = control_pid_.i;
+        control_pid_prev_.p = control_pid_.p;
+        control_pid_prev_.i = control_pid_.i;
+        control_pid_prev_.d = control_pid_.d;
+
         error_prev_ = error_;
         time_prev_ = time_now;
     }

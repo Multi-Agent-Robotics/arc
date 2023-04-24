@@ -39,7 +39,10 @@ launch:
         value: 2
     -
         name: "speed_max"
-        value: 100
+        value: 23000
+    -
+        name: "acc_max"
+        value: 0.1
     -
         name: "kp_speed"
         value: 0.004
@@ -78,7 +81,10 @@ launch:
         value: 2
     -
         name: "speed_max"
-        value: 100
+        value: 23000
+    -
+        name: "acc_max"
+        value: 0.1
     -
         name: "kp_speed"
         value: 0.004
