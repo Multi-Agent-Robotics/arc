@@ -18,11 +18,7 @@ auto blue(std::string s) { return "\033[1;34m" + s + "\033[0m"; }
 auto magenta(std::string s) { return "\033[1;35m" + s + "\033[0m"; }
 auto cyan(std::string s) { return "\033[1;36m" + s + "\033[0m"; }
 
-
-// __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << "()"
-
 #define DBG(msg) std::cerr << green(__FILE__) << ":" << yellow(std::to_string(__LINE__)) << " " << blue(__FUNCTION__) << "() " << magenta(msg) << std::endl;
-
 
 namespace ros2 = rclcpp;
 using namespace std::placeholders;
@@ -41,6 +37,7 @@ template <typename... Args> auto format_topic_path(Args... args) -> String {
         DBG("topic_path.size() <= 0");
         ros2::shutdown();
     }
+    String topic_path_str = "";
     if (topic_path.size() == 1) {
         topic_path_str = topic_path[0];
     } else {
