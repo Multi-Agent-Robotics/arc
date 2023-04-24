@@ -11,6 +11,8 @@
 #include <iostream>
 #include <vector>
 
+namespace arc {
+
 template <typename T> using Vec = std::vector<T>;
 
 using String = std::string;
@@ -25,8 +27,6 @@ template <typename... Args> String format_topic_path(Args... args) {
     }
     return topic_path_str;
 }
-
-namespace arc {
 
 // pid control struct
 struct PID {
@@ -80,8 +80,8 @@ class MotorController : public ros2::Node {
 
   public:
     MotorController()
-        : Node("motor_controller"), control_ki_prev_{0.0},
-          error_prev_{0.0}, msg_control_{}, msg_status_{} {
+        : Node("motor_controller"), control_ki_prev_{0.0}, error_prev_{0.0},
+          msg_control_{}, msg_status_{} {
 
         time_prev_ = this->get_clock()->now();
 
@@ -89,7 +89,8 @@ class MotorController : public ros2::Node {
         this->declare_parameter("motor_id");
         const String motor_id = this->get_parameter("motor_id").as_string();
         if (motor_id != "left" || motor_id != "right") {
-            RCLCPP_ERROR(this->get_logger(), "motor_id != \"left\" |
+            RCLCPP_ERROR(this->get_logger(),
+                         "motor_id != \"left\" |
             \"right\", motor_id: %s", motor_id.c_str());
             ros2::shutdown();
         }
@@ -111,8 +112,9 @@ class MotorController : public ros2::Node {
                 double wheel_circumference = 0.15 * 2 * M_PI;
                 double gear_ratio = 1.0 / 4.0;
                 double motor_poles = 14.0;
-                double erpm_per_sec = target_velocity / (wheel_circumference *
-                                               gear_ratio * motor_poles / 2.0);
+                double erpm_per_sec =
+                    target_velocity /
+                    (wheel_circumference * gear_ratio * motor_poles / 2.0);
 
                 return value;
             };
@@ -136,7 +138,8 @@ class MotorController : public ros2::Node {
             get_target_value_ = [](Float64Msg::SharedPtr msg) {
                 double target_velocity = msg->data;
                 // do conversion from m/s to current (amps)
-                double target_current = target_velocity / 10.0; // placeholder conversion factor
+                double target_current =
+                    target_velocity / 10.0; // placeholder conversion factor
 
                 return value;
             };
@@ -167,11 +170,10 @@ class MotorController : public ros2::Node {
         const String diff_drive_topic =
             format_topic_path(motor_prefix, "target", "motor", output_mode_);
         diff_drive_sub_ = this->create_subscription<Float64Msg>(
-            diff_drive_topic, 10,
-            [this](Float64Msg::SharedPtr msg) {
+            diff_drive_topic, 10, [this](Float64Msg::SharedPtr msg) {
                 target_ = get_target_value_(msg);
                 actual_ = get_sensor_value_(&vesc_state_);
-             });
+            });
 
         const String state_topic =
             format_topic_path(motor_prefix, "sensors", "core");
@@ -193,31 +195,29 @@ class MotorController : public ros2::Node {
         // controller rate timer
         const auto cooldown = std::chrono::milliseconds(1000 / controller_rate);
         // perform a control step at the controller rate
-        timer_controller_ = this->create_wall_timer(
-            cooldown, [this]() { step(); });
+        timer_controller_ =
+            this->create_wall_timer(cooldown, [this]() { step(); });
 
         // publish control and status at the controller rate
-        timer_control_ = this->create_wall_timer(
-            cooldown, [this]() {
-                // update message and clamp to max output
-                double output = control_pid_.p + control_pid_.i + control_pid_.d;
-                msg_control_.data = output > max_output_ ? max_output_ : output;
+        timer_control_ = this->create_wall_timer(cooldown, [this]() {
+            // update message and clamp to max output
+            double output = control_pid_.p + control_pid_.i + control_pid_.d;
+            msg_control_.data = output > max_output_ ? max_output_ : output;
 
-                motor_pub_->publish(msg_control_);
-            });
+            motor_pub_->publish(msg_control_);
+        });
 
-        timer_status_ = this->create_wall_timer(
-            cooldown, [this]() {
-                // update message
-                msg_status_.control.target = target_;
-                msg_status_.control.actual = actual_;
-                msg_status_.control.error = error;
-                msg_status_.pid.p = control_pid_.p;
-                msg_status_.pid.i = control_pid_.i;
-                msg_status_.pid.d = control_pid_.d;
+        timer_status_ = this->create_wall_timer(cooldown, [this]() {
+            // update message
+            msg_status_.control.target = target_;
+            msg_status_.control.actual = actual_;
+            msg_status_.control.error = error;
+            msg_status_.pid.p = control_pid_.p;
+            msg_status_.pid.i = control_pid_.i;
+            msg_status_.pid.d = control_pid_.d;
 
-                status_pub_->publish(msg_status_);
-            });
+            status_pub_->publish(msg_status_);
+        });
     }
 
     void step() {
