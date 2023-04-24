@@ -23,13 +23,14 @@ class MotorController : public ros2::Node {
     // pid collections
     PID pid_;
     PID control_pid_;
-    PID control_pid_prev_;
+    // PID control_pid_prev_;
 
     // constraints
     double max_output_; // rpm | current limit
     double acc_max_;    // m/s²
     double speed_min_;  // rpm
-    double output_limited_ = 0.0;
+    double output_ = 0.0;
+    double integral_ = 0.0;
 
     // control terms
     ros2::Time time_prev_;
@@ -217,7 +218,7 @@ class MotorController : public ros2::Node {
             // update message and clamp to max output
             // double output = control_pid_.p + control_pid_.i + control_pid_.d;
             // msg_control_.data = output > max_output_ ? max_output_ : output;
-            msg_control_.data = output_limited_;
+            msg_control_.data = output_;
 
             motor_pub_->publish(msg_control_);
         });
@@ -231,7 +232,7 @@ class MotorController : public ros2::Node {
             msg_status_.pid.p = control_pid_.p;
             msg_status_.pid.i = control_pid_.i;
             msg_status_.pid.d = control_pid_.d;
-            msg_status_.output = output_limited_;
+            msg_status_.output = output_;
 
             status_pub_->publish(msg_status_);
             // RCLCPP_DEBUG(this->get_logger(), "published status");
@@ -241,41 +242,37 @@ class MotorController : public ros2::Node {
     void step() {
         auto time_now = this->get_clock()->now();
         auto delta_time = (time_now - time_prev_).nanoseconds() * 1e-9;
-        error_ = (target_ - actual_) * delta_time; // error over the time step
+        // error_ = (target_ - actual_) * delta_time; // error over the time step
+        error_ = target_ - actual_; // error
 
         // controller pid output terms
-        control_pid_.p = pid_.p * error_;
-        control_pid_.i = pid_.i * error_ + control_pid_prev_.i;
-        control_pid_.d = pid_.d * (error_prev_ - error_);
+        control_pid_.p = pid_.p * error_; // does not depend on time
+        integral_ += error_ * delta_time;
+        control_pid_.i = pid_.i * integral_;
+        control_pid_.d = pid_.d * (error_prev_ - error_) / delta_time;
 
+        output_ = control_pid_.p + control_pid_.i + control_pid_.d;
+        double delta_output = output - output_prev_;
         // calculate max allowable change in this timeframe
         double delta_acc_max = acc_max_ * delta_time;
-        // u_limited(t) = u(t-1) + max(-Δu_max, min(Δu_max, u(t) - u(t-1)))
-        double output = control_pid_.p + control_pid_.i + control_pid_.d;
-        double output_prev =
-            control_pid_prev_.p + control_pid_prev_.i + control_pid_prev_.d;
-        output_limited_ =
-            actual_ + output +
-            std::max(-delta_acc_max,
-                     std::min(delta_acc_max, output - output_prev));
+        // limit the output to the max allowable change
+        if (std::abs(delta_output) > delta_acc_max) {
+            output_ = output_prev_ + std::copysign(delta_acc_max, delta_output);
+        }
 
         // The motor will NOT rotate when the output is between [-900, 900]
         // eRPM. Since we need the a measurement of the current eRPM, to compute
         // a difference from the target value, we need to adjust the minimum
         // output value to be greater than 900 or less than -900.
-        if (std::abs(output_limited_) < speed_min_) {
-            output_limited_ =
-                output_limited_ == 0
+        if (std::abs(output_) < speed_min_) {
+            output_ =
+                output_ == 0
                     ? 0
-                    : (output_limited_ > 0 ? speed_min_ : -speed_min_);
+                    : (output_ > 0 ? speed_min_ : -speed_min_);
         }
 
         // update previous values
-        control_pid_prev_ = control_pid_;
-        // control_pid_prev_.p = control_pid_.p;
-        // control_pid_prev_.i = control_pid_.i;
-        // control_pid_prev_.d = control_pid_.d;
-
+        output_prev_ = output_;
         error_prev_ = error_;
         time_prev_ = time_now;
     }
