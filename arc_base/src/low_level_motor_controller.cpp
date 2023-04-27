@@ -3,6 +3,7 @@
 
 #include "arc_base/utils.hpp"
 #include "arc_msgs/msg/motor_controller_status.hpp"
+#include "circular_buffer.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include <vesc_msgs/msg/vesc_state_stamped.hpp>
@@ -28,6 +29,7 @@ class MotorController : public ros2::Node {
     // pid collections
     PID pid_;
     PID control_pid_;
+    CircularBuffer<double, 20> actual_buffer_;
     // PID control_pid_prev_;
 
     // constraints
@@ -211,7 +213,8 @@ class MotorController : public ros2::Node {
             state_topic.c_str(), 10,
             [this](VescStateStampedMsg::UniquePtr msg) {
                 this->vesc_state_ = *msg;
-                this->actual_ = this->get_sensor_value_(*msg);
+                actual_buffer_.push_back(this->get_sensor_value_(*msg));
+                actual_ = actual_buffer_.mean();
             });
 
         // publishers

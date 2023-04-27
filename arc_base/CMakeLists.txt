@@ -37,6 +37,7 @@ add_executable(twist_to_diff_drive_node src/twist_to_diff_drive_node.cpp)
 ament_target_dependencies(twist_to_diff_drive_node ${SHARED_AMENT_DEPS})
 
 add_executable(low_level_motor_controller src/low_level_motor_controller.cpp)
+target_include_directories(low_level_motor_controller PRIVATE src)
 ament_target_dependencies(low_level_motor_controller ${SHARED_AMENT_DEPS})
 # ament_target_dependencies(low_level_motor_controller rclcpp arc_msgs vesc_msgs geometry_msgs)
 
