@@ -7,7 +7,7 @@ low_level_motor_controller_left:
     speed_min: 900.0
     speed_max: 23000.0
     acc_max: 0.1
-    kp_speed: 80.0 # 0.004
+    kp_speed: 1.0 # 0.004
     ki_speed: 0.0 # 0.004
     kd_speed: 0.0 # 0.0001
     kp_current: 0.004
@@ -23,7 +23,7 @@ low_level_motor_controller_right:
     speed_min: 900.0
     speed_max: 23000.0
     acc_max: 0.1
-    kp_speed: 80.0 # 0.004
+    kp_speed: 1.0 # 0.004
     ki_speed: 0.0 # 0.004
     kd_speed: 0.0 # 0.0001
     kp_current: 0.004

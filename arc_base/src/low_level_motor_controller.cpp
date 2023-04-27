@@ -7,9 +7,14 @@
 #include "std_msgs/msg/float64.hpp"
 #include <vesc_msgs/msg/vesc_state_stamped.hpp>
 
+#include <chrono>
 #include <functional>
 #include <iostream>
+#include <thread>
 #include <vector>
+
+// use chrono literals
+using namespace std::chrono_literals;
 
 namespace arc {
 
@@ -30,6 +35,7 @@ class MotorController : public ros2::Node {
     double acc_max_;    // m/s²
     double speed_min_;  // rpm
     double output_ = 0.0;
+    double output_prev_ = 0.0;
     double integral_ = 0.0;
 
     // control terms
@@ -62,8 +68,7 @@ class MotorController : public ros2::Node {
   public:
     MotorController()
         : Node("motor_controller"), control_pid_{0.0, 0.0, 0.0},
-          control_pid_prev_{0.0, 0.0, 0.0}, error_prev_{0.0}, msg_control_{},
-          msg_status_{} {
+          error_prev_{0.0}, msg_control_{}, msg_status_{} {
 
         time_prev_ = this->get_clock()->now();
 
@@ -242,7 +247,8 @@ class MotorController : public ros2::Node {
     void step() {
         auto time_now = this->get_clock()->now();
         auto delta_time = (time_now - time_prev_).nanoseconds() * 1e-9;
-        // error_ = (target_ - actual_) * delta_time; // error over the time step
+        // error_ = (target_ - actual_) * delta_time; // error over the time
+        // step
         error_ = target_ - actual_; // error
 
         // controller pid output terms
@@ -252,7 +258,7 @@ class MotorController : public ros2::Node {
         control_pid_.d = pid_.d * (error_prev_ - error_) / delta_time;
 
         output_ = control_pid_.p + control_pid_.i + control_pid_.d;
-        double delta_output = output - output_prev_;
+        double delta_output = output_ - output_prev_;
         // calculate max allowable change in this timeframe
         double delta_acc_max = acc_max_ * delta_time;
         // limit the output to the max allowable change
@@ -264,11 +270,22 @@ class MotorController : public ros2::Node {
         // eRPM. Since we need the a measurement of the current eRPM, to compute
         // a difference from the target value, we need to adjust the minimum
         // output value to be greater than 900 or less than -900.
-        if (std::abs(output_) < speed_min_) {
+        // if (std::abs(output_) < speed_min_) {
+        //     output_ =
+        //         output_ == 0 ? 0 : (output_ > 0 ? speed_min_ : -speed_min_);
+        // }
+
+        // In (0, 450) we want to clamp to 900
+        // In [450, 900) we want to clamp to 0
+        if (std::abs(output_) < 450) {
             output_ =
-                output_ == 0
-                    ? 0
-                    : (output_ > 0 ? speed_min_ : -speed_min_);
+                output_ == 0 ? 0 : (output_ > 0 ? speed_min_ : -speed_min_);
+        } else if (std::abs(output_) < 900) {
+            output_ = 0;
+            integral_ = 0;
+            error_ = 0;
+            // std::this_thread::sleep_for(500ms);
+            // ros2::sleep_for(500ms);
         }
 
         // update previous values
