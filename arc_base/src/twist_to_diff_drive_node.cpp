@@ -1,8 +1,8 @@
+#include "arc_base/utils.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "rclcpp/executor.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float64.hpp"
-#include "arc_base/utils.hpp"
 #include <cmath>
 #include <cstdio>
 #include <iostream>
@@ -73,11 +73,13 @@ class DifferentialDrive {
 
 class TwistToDiffDriveNode : public rclcpp::Node {
   public:
-    TwistToDiffDriveNode(double rate)
-        : Node("twist_to_diff_drive_node"), rate_{rate},
+    TwistToDiffDriveNode()
+        : Node("twist_to_diff_drive_node"),
           diff_drive_model_(0.224, 0.15, GEARING, 1) {
         // Create a DifferentialDrive object with a wheel base of 224mm and a
         // wheel radius of 150mm
+
+        this->declare_parameter("controller_rate"); // Hz
 
         // twist command subscriber
         twist_sub_ = this->create_subscription<TwistStampedMsg>(
@@ -92,6 +94,12 @@ class TwistToDiffDriveNode : public rclcpp::Node {
     }
 
     void spin() {
+        double controller_rate =
+            this->get_parameter("controller_rate").as_double();
+        std::fprintf(stderr, "%s: %.5f\n", magenta("controller_rate").c_str(),
+                     controller_rate);
+        ros2::Rate rate(controller_rate);
+
         while (rclcpp::ok()) {
             // publish the left and right motor velocities
             if (publish_motor_speed(MotorSide::LEFT, left_motor_speed_)) {
@@ -99,19 +107,19 @@ class TwistToDiffDriveNode : public rclcpp::Node {
                 // %0.5f", left_motor_speed_);
             }
             rclcpp::spin_some(this->get_node_base_interface());
-            rate_.sleep();
+            rate.sleep();
 
             if (publish_motor_speed(MotorSide::RIGHT, right_motor_speed_)) {
                 // RCLCPP_INFO(this->get_logger(), "Published right motor speed:
                 // %0.5f", right_motor_speed_);
             }
             rclcpp::spin_some(this->get_node_base_interface());
-            rate_.sleep();
+            rate.sleep();
         }
     }
 
   private:
-    rclcpp::Rate rate_;
+    // rclcpp::Rate rate_;
     Subscriber<TwistStampedMsg>::SharedPtr twist_sub_;
     Publisher<Float64Msg>::SharedPtr motor_speed_left_pub_;
     Publisher<Float64Msg>::SharedPtr motor_speed_right_pub_;
@@ -185,7 +193,7 @@ int main(int argc, char **argv) {
 
     // rclcpp::executors::MultiThreadedExecutor executor;
 
-    auto node = std::make_shared<arc::TwistToDiffDriveNode>(10);
+    auto node = std::make_shared<arc::TwistToDiffDriveNode>();
     node->spin();
     // executor.add_node(node);
 

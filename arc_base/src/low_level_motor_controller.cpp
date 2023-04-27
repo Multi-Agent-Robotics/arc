@@ -65,6 +65,21 @@ class MotorController : public ros2::Node {
     Publisher<Float64Msg>::SharedPtr motor_pub_;
     Publisher<MotorControllerStatusMsg>::SharedPtr status_pub_;
 
+    void pub_status_() {
+        // update message
+
+        msg_status_.control.target = target_;
+        msg_status_.control.actual = actual_;
+        msg_status_.control.error = error_;
+        msg_status_.pid.p = control_pid_.p;
+        msg_status_.pid.i = control_pid_.i;
+        msg_status_.pid.d = control_pid_.d;
+        msg_status_.output = output_;
+
+        status_pub_->publish(msg_status_);
+        // RCLCPP_DEBUG(this->get_logger(), "published status");
+    }
+
   public:
     MotorController()
         : Node("motor_controller"), control_pid_{0.0, 0.0, 0.0},
@@ -186,7 +201,6 @@ class MotorController : public ros2::Node {
         diff_drive_sub_ = this->create_subscription<Float64Msg>(
             diff_drive_topic.c_str(), 10, [this](Float64Msg::UniquePtr msg) {
                 this->target_ = this->get_target_value_(*msg);
-                this->actual_ = this->get_sensor_value_(vesc_state_);
             });
 
         const String state_topic =
@@ -197,6 +211,7 @@ class MotorController : public ros2::Node {
             state_topic.c_str(), 10,
             [this](VescStateStampedMsg::UniquePtr msg) {
                 this->vesc_state_ = *msg;
+                this->actual_ = this->get_sensor_value_(*msg);
             });
 
         // publishers
@@ -228,20 +243,8 @@ class MotorController : public ros2::Node {
             motor_pub_->publish(msg_control_);
         });
 
-        timer_status_ = this->create_wall_timer(cooldown, [this]() {
-            // update message
-
-            msg_status_.control.target = target_;
-            msg_status_.control.actual = actual_;
-            msg_status_.control.error = error_;
-            msg_status_.pid.p = control_pid_.p;
-            msg_status_.pid.i = control_pid_.i;
-            msg_status_.pid.d = control_pid_.d;
-            msg_status_.output = output_;
-
-            status_pub_->publish(msg_status_);
-            // RCLCPP_DEBUG(this->get_logger(), "published status");
-        });
+        timer_status_ =
+            this->create_wall_timer(cooldown, [this]() { pub_status_(); });
     }
 
     void step() {
@@ -277,14 +280,16 @@ class MotorController : public ros2::Node {
 
         // In (0, 450) we want to clamp to 900
         // In [450, 900) we want to clamp to 0
-        if (std::abs(output_) < 450) {
-            output_ =
-                output_ == 0 ? 0 : (output_ > 0 ? speed_min_ : -speed_min_);
-        } else if (std::abs(output_) < 900) {
+        if (std::abs(output_) < 450) { // In (0, 450)
+            output_ = std::abs(output_) < std::numeric_limits<double>::epsilon()
+                          ? 0
+                          : std::copysign(speed_min_, output_);
+        } else if (std::abs(output_) < 900) { // In [450, 900)
             output_ = 0;
             integral_ = 0;
             error_ = 0;
-            // std::this_thread::sleep_for(500ms);
+            // actual_ = 0;
+            pub_status_();
             // ros2::sleep_for(500ms);
         }
 

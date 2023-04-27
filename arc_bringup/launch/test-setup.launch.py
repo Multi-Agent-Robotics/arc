@@ -94,17 +94,18 @@ def generate_launch_description():
         )
     )
 
-    # twist to diff drive
-    twist_to_diff_drive = Node(
-        package='arc_base',
-        executable='twist_to_diff_drive_node',
-        name='twist_to_diff_drive'
-    )
-
     config = os.path.join(
         get_package_share_directory('arc_bringup'),
         'config',
         'params.yaml'
+    )
+
+    # twist to diff drive
+    twist_to_diff_drive = Node(
+        package='arc_base',
+        executable='twist_to_diff_drive_node',
+        name='twist_to_diff_drive',
+        parameters=[config]
     )
 
     print(green("config: " + config))
