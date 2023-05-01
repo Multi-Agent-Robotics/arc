@@ -10,6 +10,13 @@
 #include <functional>
 #include <iostream>
 
+// TODO eflknewflknew
+// PERF wlfknweflk
+// BUG wefewfwef
+// WARNING wkfnwe
+// NOTE wlkenwp
+// FIX owwpioejf
+
 using namespace std::chrono_literals;
 
 namespace arc {
@@ -152,6 +159,8 @@ auto main(int argc, char **argv) -> int {
 
     ros2::spin(node);
     ros2::shutdown();
+
+    printf("hei")
 
     return 0;
 }
