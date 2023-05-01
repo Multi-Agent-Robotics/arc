@@ -29,8 +29,10 @@ class MotorController : public ros2::Node {
     // pid collections
     PID pid_;
     PID control_pid_;
+    // buffer for moving average
     CircularBuffer<double, 20> actual_buffer_;
-    // PID control_pid_prev_;
+    // robot parameters
+    RobotParameters robot_params_;
 
     // constraints
     double max_output_; // rpm | current limit
@@ -90,36 +92,15 @@ class MotorController : public ros2::Node {
         time_prev_ = this->get_clock()->now();
 
         // ROS PARAMETERS
-        this->declare_parameter("motor_id");
-        const String motor_id = this->get_parameter("motor_id").as_string();
-        std::fprintf(stderr, "%s: %s\n", magenta("motor_id").c_str(),
-                     motor_id.c_str());
+        const auto motor_id declare_and_get_parameter<String>(this, "motor_id");
+        const auto controller_rate declare_and_get_parameter<int>(
+            this, "controller_rate");
+        output_mode_ declare_and_get_parameter<String>(this, "output_mode");
+        acc_max_ = declare_and_get_parameter<double>(this, "acc_max");
+        speed_min_ = declare_and_get_parameter<double>(this, "speed_min");
 
-        // if (motor_id != "left" || motor_id != "right") {
-        //     RCLCPP_WARN_ONCE(this->get_logger(),
-        //                  "motor_id != 'left' | 'right', motor_id: %s",
-        //                  motor_id.c_str());
-        //     ros2::shutdown();
-        // }
-
-        this->declare_parameter("controller_rate"); // Hz
-        int controller_rate = this->get_parameter("controller_rate").as_int();
-        std::fprintf(stderr, "%s: %d\n", magenta("controller_rate").c_str(),
-                     controller_rate);
-
-        this->declare_parameter("output_mode"); // speed | current
-        output_mode_ = this->get_parameter("output_mode").as_string();
-        std::fprintf(stderr, "%s: %s\n", magenta("output_mode").c_str(),
-                     output_mode_.c_str());
-
-        this->declare_parameter("acc_max"); // m/s²
-        acc_max_ = this->get_parameter("acc_max").as_double();
-        std::fprintf(stderr, "%s: %f\n", magenta("acc_max").c_str(), acc_max_);
-
-        this->declare_parameter("speed_min"); // m/s²
-        speed_min_ = this->get_parameter("speed_min").as_double();
-        std::fprintf(stderr, "%s: %f\n", magenta("speed_min").c_str(),
-                     speed_min_);
+        // load all robot parameters
+        // robot_params_ = RobotParameters(this);
 
         if (output_mode_ == "speed") {
             get_sensor_value_ = [](VescStateStampedMsg &msg) -> double {
@@ -128,37 +109,25 @@ class MotorController : public ros2::Node {
             get_target_value_ = [](Float64Msg &msg) -> double {
                 double target_velocity = msg.data;
                 // do conversion from m/s to eRPM
-                // double wheel_circumference = 0.15 * 2 * M_PI;
-                // double gear_ratio = 1.0 / 4.0;
-                // double motor_poles = 14.0;
-                // double erpm_per_sec =
-                //     target_velocity /
-                //     (wheel_circumference * gear_ratio * motor_poles / 2.0);
+                double wheel_circumference = 0.15 * 2 * M_PI;
+                double gear_ratio = 1.0 / 4.0;
+                double motor_poles = 14.0;
+                double erpm_per_sec =
+                    target_velocity /
+                    (wheel_circumference * gear_ratio * motor_poles / 2.0);
 
-                // return erpm_per_sec;
-                return target_velocity;
+                return erpm_per_sec;
+                // return target_velocity;
             };
 
             // pid values from param
-            this->declare_parameter("kp_speed");
-            pid_.p = this->get_parameter("kp_speed").as_double();
-            std::fprintf(stderr, "%s: %f\n", magenta("kp_speed").c_str(),
-                         pid_.p);
-            this->declare_parameter("ki_speed");
-            pid_.i = this->get_parameter("ki_speed").as_double();
-            std::fprintf(stderr, "%s: %f\n", magenta("ki_speed").c_str(),
-                         pid_.i);
-
-            this->declare_parameter("kd_speed");
-            pid_.d = this->get_parameter("kd_speed").as_double();
-            std::fprintf(stderr, "%s: %f\n", magenta("kd_speed").c_str(),
-                         pid_.d);
+            pid_.p = declare_and_get_parameter<double>(this, "pid_speed.kp");
+            pid_.i = declare_and_get_parameter<double>(this, "pid_speed.ki");
+            pid_.d = declare_and_get_parameter<double>(this, "pid_speed.kd");
 
             // max output from param
-            this->declare_parameter("speed_max");
-            max_output_ = this->get_parameter("speed_max").as_double();
-            std::fprintf(stderr, "%s: %f\n", magenta("speed_max").c_str(),
-                         max_output_);
+            max_output_ = declare_and_get_parameter<double>(this, "speed_max");
+
         } else if (output_mode_ == "current") {
             get_sensor_value_ = [](VescStateStampedMsg &msg) {
                 return msg.state.current_motor;
@@ -173,16 +142,14 @@ class MotorController : public ros2::Node {
             };
 
             // pid values from param
-            this->declare_parameter("kp_current");
-            pid_.p = this->get_parameter("kp_current").as_double();
-            this->declare_parameter("ki_current");
-            pid_.i = this->get_parameter("ki_current").as_double();
-            this->declare_parameter("kd_current");
-            pid_.d = this->get_parameter("kd_current").as_double();
+            pid_.p = declare_and_get_parameter<double>(this, "pid_current.kp");
+            pid_.i = declare_and_get_parameter<double>(this, "pid_current.ki");
+            pid_.d = declare_and_get_parameter<double>(this, "pid_current.kd");
 
             // max output from param
-            this->declare_parameter("current_max");
-            max_output_ = this->get_parameter("current_max").as_double();
+            max_output_ =
+                declare_and_get_parameter<double>(this, "current_max");
+
         } else {
             RCLCPP_WARN_ONCE(
                 this->get_logger(),
@@ -309,7 +276,11 @@ auto main(int argc, char **argv) -> int {
 
     ros2::init(argc, argv);
 
-    auto node = std::make_shared<MotorController>();
+    // rclcpp::NodeOptions options;
+    // options.allow_undeclared_parameters(true);
+    // options.automatically_declare_parameters_from_overrides(true);
+
+    auto node = std::make_shared<MotorController>("motor_controller");
 
     ros2::spin(node);
     ros2::shutdown();

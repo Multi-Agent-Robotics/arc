@@ -1,0 +1,9 @@
+global_parameter_server:
+  ros__parameters:
+    robot:
+      wheel_radius: 0.15
+      wheel_base: 0.224
+      motor_pulley_teeth: 15
+      wheel_pulley_teeth: 60
+      gear_ratio: 0.25
+      motor_pole_pairs: 7

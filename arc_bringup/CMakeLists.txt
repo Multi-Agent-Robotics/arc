@@ -17,6 +17,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -28,6 +29,14 @@ if(BUILD_TESTING)
   #set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+add_executable(global_parameter_server src/global_parameter_server.cpp)
+ament_target_dependencies(global_parameter_server rclcpp)
+
+install(TARGETS
+  global_parameter_server
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 install(
     DIRECTORY launch
