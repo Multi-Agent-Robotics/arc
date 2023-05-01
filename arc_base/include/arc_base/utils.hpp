@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rcl_interfaces/msg/parameter_descriptor.hpp"
+// #include "rcl_interfaces/msg/parameter_descriptor.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include <iostream>
 #include <iterator>
@@ -40,29 +40,6 @@ struct PID {
     double d;
 };
 
-struct RobotParameters {
-    double wheel_radius;
-    double wheel_base;
-    int motor_pulley_teeth;
-    int wheel_pulley_teeth;
-    double gear_ratio;
-    int motor_pole_pairs;
-
-    RobotParameters(double wheel_radius, double wheel_base,
-                    int motor_pulley_teeth, int wheel_pulley_teeth,
-                    int motor_pole_pairs)
-        : wheel_radius(wheel_radius), wheel_base(wheel_base),
-          motor_pulley_teeth(motor_pulley_teeth),
-          wheel_pulley_teeth(wheel_pulley_teeth),
-          motor_pole_pairs(motor_pole_pairs) {
-        gear_ratio = (double)wheel_pulley_teeth / (double)motor_pulley_teeth;
-    }
-
-    RobotParameters(ros2::Node &node) {
-        // get ros parameters
-    }
-};
-
 template <typename Iterator>
 std::string join(Iterator begin, Iterator end, const std::string &delimiter) {
     std::ostringstream oss;
@@ -87,7 +64,8 @@ auto join(const std::vector<std::string> &strings,
 template <typename T>
 auto declare_and_get_parameter(ros2::Node &node, const std::string &name,
                                const std::string &description = "") -> T {
-    const std::string[] supported_types = {"int", "double", "string", "bool"};
+    const std::vector<std::string> supported_types = {"int", "double", "string",
+                                                      "bool"};
     const std::string error_msg =
         "Unsupported type. Supported types are: " +
         join(std::begin(supported_types), std::end(supported_types), ", ");
@@ -97,11 +75,11 @@ auto declare_and_get_parameter(ros2::Node &node, const std::string &name,
 
 template <>
 auto declare_and_get_parameter<int>(ros2::Node &node, const std::string &name,
-                                    const std::string &description = "")
-    -> int {
+                                    const std::string &description) -> int {
     auto param_desc = rcl_interfaces::msg::ParameterDescriptor{};
     param_desc.description = description;
-    node.declare_parameter(name, param_desc);
+    const int default_value = 0;
+    node.declare_parameter(name, default_value, param_desc);
     int param = node.get_parameter(name).as_int();
     std::fprintf(stderr, "%s: %d\n", magenta(name).c_str(), param);
     return param;
@@ -110,11 +88,12 @@ auto declare_and_get_parameter<int>(ros2::Node &node, const std::string &name,
 template <>
 auto declare_and_get_parameter<double>(ros2::Node &node,
                                        const std::string &name,
-                                       const std::string &description = "")
+                                       const std::string &description)
     -> double {
     auto param_desc = rcl_interfaces::msg::ParameterDescriptor{};
     param_desc.description = description;
-    node.declare_parameter(name, param_desc);
+    const double default_value = 0.0;
+    node.declare_parameter(name, default_value, param_desc);
     double param = node.get_parameter(name).as_double();
     std::fprintf(stderr, "%s: %f\n", magenta(name).c_str(), param);
     return param;
@@ -123,11 +102,12 @@ auto declare_and_get_parameter<double>(ros2::Node &node,
 template <>
 auto declare_and_get_parameter<std::string>(ros2::Node &node,
                                             const std::string &name,
-                                            const std::string &description = "")
+                                            const std::string &description)
     -> std::string {
     auto param_desc = rcl_interfaces::msg::ParameterDescriptor{};
     param_desc.description = description;
-    node.declare_parameter(name, param_desc);
+    const std::string default_value = "";
+    node.declare_parameter(name, default_value, param_desc);
     std::string param = node.get_parameter(name).as_string();
     std::fprintf(stderr, "%s: %s\n", magenta(name).c_str(), param.c_str());
     return param;
@@ -135,11 +115,11 @@ auto declare_and_get_parameter<std::string>(ros2::Node &node,
 
 template <>
 auto declare_and_get_parameter<bool>(ros2::Node &node, const std::string &name,
-                                     const std::string &description = "")
-    -> bool {
+                                     const std::string &description) -> bool {
     auto param_desc = rcl_interfaces::msg::ParameterDescriptor{};
     param_desc.description = description;
-    node.declare_parameter(name, param_desc);
+    const bool default_value = false;
+    node.declare_parameter(name, default_value, param_desc);
     bool param = node.get_parameter(name).as_bool();
     std::fprintf(stderr, "%s: %s\n", magenta(name).c_str(),
                  param ? "true" : "false");
@@ -206,3 +186,40 @@ template <typename... Args> auto format_topic_path(Args... args) -> String {
     // RCLCPP_DEBUG(ros2::get_logger(), "topic: " + yellow(topic_path_str));
     return topic_path_str;
 }
+
+struct RobotParameters {
+    double wheel_radius;
+    double wheel_base;
+    int motor_pulley_teeth;
+    int wheel_pulley_teeth;
+    double gear_ratio;
+    int motor_pole_pairs;
+
+    RobotParameters() = default;
+
+    RobotParameters(double wheel_radius, double wheel_base,
+                    int motor_pulley_teeth, int wheel_pulley_teeth,
+                    int motor_pole_pairs)
+        : wheel_radius(wheel_radius), wheel_base(wheel_base),
+          motor_pulley_teeth(motor_pulley_teeth),
+          wheel_pulley_teeth(wheel_pulley_teeth),
+          motor_pole_pairs(motor_pole_pairs) {
+        gear_ratio = (double)wheel_pulley_teeth / (double)motor_pulley_teeth;
+    }
+
+    RobotParameters(ros2::Node &node) {
+        // get ros parameters
+        String prefix = "robot.";
+        wheel_radius = declare_and_get_parameter<double>(
+            node, prefix + "wheel_radius", "Wheel radius in meters");
+        wheel_base = declare_and_get_parameter<double>(
+            node, prefix + "wheel_base", "Wheel base in meters");
+        motor_pulley_teeth = declare_and_get_parameter<int>(
+            node, prefix + "motor_pulley_teeth", "Motor pulley teeth");
+        wheel_pulley_teeth = declare_and_get_parameter<int>(
+            node, prefix + "wheel_pulley_teeth", "Wheel pulley teeth");
+        motor_pole_pairs = declare_and_get_parameter<int>(
+            node, prefix + "motor_pole_pairs", "Motor pole pairs");
+        gear_ratio = (double)wheel_pulley_teeth / (double)motor_pulley_teeth;
+    }
+};

@@ -27,6 +27,16 @@ global_parameters:
     ki: 0.004
     kd: 0.0001
 
+  pid_pos_linear: &PID_POS_LINEAR
+    kp: 1.0
+    ki: 0.0
+    kd: 0.0
+
+  pid_pos_angular: &PID_POS_ANGULAR
+    kp: 1.0
+    ki: 0.0
+    kd: 0.0
+
 low_level_motor_controller_left:
   ros__parameters:
     motor_id: "left"
@@ -48,3 +58,11 @@ low_level_motor_controller_right:
 twist_to_diff_drive:
   ros__parameters:
     controller_rate: 1000.0
+
+pos_controller:
+  ros__parameters:
+    controller_rate: 1000.0
+    target_velocity: 1.0
+    pos_tolerance: 0.05
+    pid_linear: *PID_POS_LINEAR
+    pid_angular: *PID_POS_ANGULAR

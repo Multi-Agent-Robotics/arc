@@ -21,7 +21,7 @@ find_package(ament_cmake REQUIRED)
 # include "include" directory
 include_directories(include)
 
-set(SHARED_AMENT_DEPS rclcpp arc_msgs vesc_msgs geometry_msgs std_msgs nav_msgs)
+set(SHARED_AMENT_DEPS rclcpp arc_msgs vesc_msgs geometry_msgs std_msgs nav_msgs tf2_geometry_msgs tf2_ros tf2_eigen tf2_msgs tf2)
 foreach(ament_deps ${SHARED_AMENT_DEPS})
     find_package(${ament_deps} REQUIRED) 
 endforeach()
@@ -42,6 +42,7 @@ ament_target_dependencies(low_level_motor_controller ${SHARED_AMENT_DEPS})
 # ament_target_dependencies(low_level_motor_controller rclcpp arc_msgs vesc_msgs geometry_msgs)
 
 add_executable(pos_controller src/pos_controller.cpp)
+target_include_directories(pos_controller PRIVATE src)
 ament_target_dependencies(pos_controller ${SHARED_AMENT_DEPS})
 
 install(TARGETS

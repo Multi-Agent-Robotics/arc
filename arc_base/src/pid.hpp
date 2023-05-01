@@ -11,8 +11,8 @@ class PIDController {
     PIDController(double kp, double ki, double kd)
         : kp_(kp), ki_(ki), kd_(kd) {}
 
-    double compute(double target, double current, double dt) {
-        double error = target - current;                // proportional
+    double compute(double error, double dt) {
+        // double error = target - current;                // proportional
         integral_ += error * dt;                        // integral
         double derivative = (error - prev_error_) / dt; // derivative
 

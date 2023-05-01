@@ -85,19 +85,23 @@ class MotorController : public ros2::Node {
     }
 
   public:
-    MotorController()
-        : Node("motor_controller"), control_pid_{0.0, 0.0, 0.0},
-          error_prev_{0.0}, msg_control_{}, msg_status_{} {
+    MotorController(const std::string &name)
+        : Node(name.c_str()), control_pid_{0.0, 0.0, 0.0}, error_prev_{0.0},
+          msg_control_{}, msg_status_{}, robot_params_{*this}
+    //   robot_params_(reinterpret_cast<ros2::Node &>(this))
+    // load all robot parameters
+    {
 
         time_prev_ = this->get_clock()->now();
 
         // ROS PARAMETERS
-        const auto motor_id declare_and_get_parameter<String>(this, "motor_id");
-        const auto controller_rate declare_and_get_parameter<int>(
-            this, "controller_rate");
-        output_mode_ declare_and_get_parameter<String>(this, "output_mode");
-        acc_max_ = declare_and_get_parameter<double>(this, "acc_max");
-        speed_min_ = declare_and_get_parameter<double>(this, "speed_min");
+        const auto motor_id =
+            declare_and_get_parameter<String>(*this, "motor_id");
+        const auto controller_rate =
+            declare_and_get_parameter<int>(*this, "controller_rate");
+        output_mode_ = declare_and_get_parameter<String>(*this, "output_mode");
+        acc_max_ = declare_and_get_parameter<double>(*this, "acc_max");
+        speed_min_ = declare_and_get_parameter<double>(*this, "speed_min");
 
         // load all robot parameters
         // robot_params_ = RobotParameters(this);
@@ -121,12 +125,12 @@ class MotorController : public ros2::Node {
             };
 
             // pid values from param
-            pid_.p = declare_and_get_parameter<double>(this, "pid_speed.kp");
-            pid_.i = declare_and_get_parameter<double>(this, "pid_speed.ki");
-            pid_.d = declare_and_get_parameter<double>(this, "pid_speed.kd");
+            pid_.p = declare_and_get_parameter<double>(*this, "pid_speed.kp");
+            pid_.i = declare_and_get_parameter<double>(*this, "pid_speed.ki");
+            pid_.d = declare_and_get_parameter<double>(*this, "pid_speed.kd");
 
             // max output from param
-            max_output_ = declare_and_get_parameter<double>(this, "speed_max");
+            max_output_ = declare_and_get_parameter<double>(*this, "speed_max");
 
         } else if (output_mode_ == "current") {
             get_sensor_value_ = [](VescStateStampedMsg &msg) {
@@ -142,13 +146,13 @@ class MotorController : public ros2::Node {
             };
 
             // pid values from param
-            pid_.p = declare_and_get_parameter<double>(this, "pid_current.kp");
-            pid_.i = declare_and_get_parameter<double>(this, "pid_current.ki");
-            pid_.d = declare_and_get_parameter<double>(this, "pid_current.kd");
+            pid_.p = declare_and_get_parameter<double>(*this, "pid_current.kp");
+            pid_.i = declare_and_get_parameter<double>(*this, "pid_current.ki");
+            pid_.d = declare_and_get_parameter<double>(*this, "pid_current.kd");
 
             // max output from param
             max_output_ =
-                declare_and_get_parameter<double>(this, "current_max");
+                declare_and_get_parameter<double>(*this, "current_max");
 
         } else {
             RCLCPP_WARN_ONCE(
