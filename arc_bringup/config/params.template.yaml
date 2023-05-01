@@ -1,0 +1,68 @@
+global_parameters:
+  robot: &ROBOT
+    wheel_radius: 0.15
+    wheel_base: 0.224
+    motor_pulley_teeth: 15
+    wheel_pulley_teeth: 60
+    gear_ratio: 0.25
+    motor_pole_pairs: 7
+
+  controller_parameters: &CONTROLLER_PARAMETERS
+    controller_rate: 1000
+    output_mode: "speed"
+
+  constraints: &CONSTRAINTS
+    current_max: 2.0
+    speed_min: 900.0
+    speed_max: 23000.0
+    acc_max: 5000.0
+
+  pid_speed: &PID_SPEED
+    kp: 1.0 # 0.004
+    ki: 0.0 # 0.004
+    kd: 0.0 # 0.0001
+
+  pid_current: &PID_CURRENT
+    kp: 0.004
+    ki: 0.004
+    kd: 0.0001
+
+  pid_pos_linear: &PID_POS_LINEAR
+    kp: 1.0
+    ki: 0.0
+    kd: 0.0
+
+  pid_pos_angular: &PID_POS_ANGULAR
+    kp: 1.0
+    ki: 0.0
+    kd: 0.0
+
+low_level_motor_controller_left:
+  ros__parameters:
+    motor_id: "left"
+    <<: *CONTROLLER_PARAMETERS
+    <<: *CONSTRAINTS
+    pid_speed: *PID_SPEED
+    pid_current: *PID_CURRENT
+    robot: *ROBOT
+
+low_level_motor_controller_right:
+  ros__parameters:
+    motor_id: "right"
+    <<: *CONTROLLER_PARAMETERS
+    <<: *CONSTRAINTS
+    pid_speed: *PID_SPEED
+    pid_current: *PID_CURRENT
+    robot: *ROBOT
+
+twist_to_diff_drive:
+  ros__parameters:
+    controller_rate: 1000.0
+
+pos_controller:
+  ros__parameters:
+    controller_rate: 1000.0
+    target_velocity: 1.0
+    pos_tolerance: 0.05
+    pid_linear: *PID_POS_LINEAR
+    pid_angular: *PID_POS_ANGULAR
