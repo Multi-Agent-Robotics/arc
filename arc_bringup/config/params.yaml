@@ -16,7 +16,7 @@ low_level_motor_controller_left:
       ki: 0.004
       kd: 0.0001
     robot:
-      wheel_radius: 0.15
+      wheel_diameter: 0.15
       wheel_base: 0.224
       motor_pulley_teeth: 15
       wheel_pulley_teeth: 60
@@ -40,7 +40,7 @@ low_level_motor_controller_right:
       ki: 0.004
       kd: 0.0001
     robot:
-      wheel_radius: 0.15
+      wheel_diameter: 0.15
       wheel_base: 0.224
       motor_pulley_teeth: 15
       wheel_pulley_teeth: 60

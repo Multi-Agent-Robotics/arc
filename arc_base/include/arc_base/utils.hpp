@@ -188,7 +188,7 @@ template <typename... Args> auto format_topic_path(Args... args) -> String {
 }
 
 struct RobotParameters {
-    double wheel_radius;
+    double wheel_diameter;
     double wheel_base;
     int motor_pulley_teeth;
     int wheel_pulley_teeth;
@@ -197,10 +197,10 @@ struct RobotParameters {
 
     RobotParameters() = default;
 
-    RobotParameters(double wheel_radius, double wheel_base,
+    RobotParameters(double wheel_diameter, double wheel_base,
                     int motor_pulley_teeth, int wheel_pulley_teeth,
                     int motor_pole_pairs)
-        : wheel_radius(wheel_radius), wheel_base(wheel_base),
+        : wheel_diameter(wheel_diameter), wheel_base(wheel_base),
           motor_pulley_teeth(motor_pulley_teeth),
           wheel_pulley_teeth(wheel_pulley_teeth),
           motor_pole_pairs(motor_pole_pairs) {
@@ -210,8 +210,8 @@ struct RobotParameters {
     RobotParameters(ros2::Node &node) {
         // get ros parameters
         String prefix = "robot.";
-        wheel_radius = declare_and_get_parameter<double>(
-            node, prefix + "wheel_radius", "Wheel radius in meters");
+        wheel_diameter = declare_and_get_parameter<double>(
+            node, prefix + "wheel_diameter", "Wheel radius in meters");
         wheel_base = declare_and_get_parameter<double>(
             node, prefix + "wheel_base", "Wheel base in meters");
         motor_pulley_teeth = declare_and_get_parameter<int>(

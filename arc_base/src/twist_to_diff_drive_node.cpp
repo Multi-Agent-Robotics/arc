@@ -23,14 +23,13 @@ class DifferentialDrive {
   private:
     double wheel_base_;
     double wheel_radius_;
-    double target_velocity_;
     double gearing_;
 
   public:
     DifferentialDrive(double wheel_base, double wheel_radius, double gearing,
                       double target_velocity)
         : wheel_base_{wheel_base}, wheel_radius_{wheel_radius},
-          target_velocity_{target_velocity}, gearing_{gearing} {}
+          gearing_{gearing} {}
 
     // Calculate the relations between the left and right wheel velocities in
     // [-1, 1]
@@ -62,10 +61,10 @@ class DifferentialDrive {
 
         double wheel_left_velocity = this->target_velocity_ *
                                      wheel_left_relation /
-                                     (wheel_radius_ * gearing_) * TO_RPM;
+                                     (wheel_radius_ * gearing_);
         double wheel_right_velocity = this->target_velocity_ *
                                       wheel_right_relation /
-                                      (wheel_radius_ * gearing_) * TO_RPM;
+                                      (wheel_radius_ * gearing_);
 
         return std::make_pair(wheel_left_velocity, wheel_right_velocity);
     }
@@ -75,11 +74,13 @@ class TwistToDiffDriveNode : public rclcpp::Node {
   public:
     TwistToDiffDriveNode()
         : Node("twist_to_diff_drive_node"),
-          diff_drive_model_(0.224, 0.15, GEARING, 1) {
+          diff_drive_model_(0.224, 0.15, GEARING) {
         // Create a DifferentialDrive object with a wheel base of 224mm and a
         // wheel radius of 150mm
 
-        this->declare_parameter("controller_rate"); // Hz
+        // controller rate in Hz
+        controller_rate_ =
+            this->declare_and_get_parameter<double>(*this, "controller_rate");
 
         // twist command subscriber
         twist_sub_ = this->create_subscription<TwistStampedMsg>(
@@ -94,11 +95,8 @@ class TwistToDiffDriveNode : public rclcpp::Node {
     }
 
     void spin() {
-        double controller_rate =
-            this->get_parameter("controller_rate").as_double();
-        std::fprintf(stderr, "%s: %.5f\n", magenta("controller_rate").c_str(),
-                     controller_rate);
-        ros2::Rate rate(controller_rate);
+        // set ros node rate
+        ros2::Rate rate(controller_rate_);
 
         while (rclcpp::ok()) {
             // publish the left and right motor velocities
@@ -125,6 +123,7 @@ class TwistToDiffDriveNode : public rclcpp::Node {
     Publisher<Float64Msg>::SharedPtr motor_speed_right_pub_;
     DifferentialDrive diff_drive_model_;
 
+    double controller_rate_;
     double left_motor_speed_;
     double right_motor_speed_;
 

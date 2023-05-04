@@ -86,42 +86,28 @@ class MotorController : public ros2::Node {
 
   public:
     MotorController(const std::string &name)
-        : Node(name.c_str()), control_pid_{0.0, 0.0, 0.0}, error_prev_{0.0},
-          msg_control_{}, msg_status_{}, robot_params_{*this}
-    //   robot_params_(reinterpret_cast<ros2::Node &>(this))
-    // load all robot parameters
-    {
+        : Node(name.c_str()), control_pid_{0.0, 0.0, 0.0}, error_prev_{0.0}, msg_control_{},
+          msg_status_{}, robot_params_{*this} {
 
         time_prev_ = this->get_clock()->now();
 
         // ROS PARAMETERS
-        const auto motor_id =
-            declare_and_get_parameter<String>(*this, "motor_id");
-        const auto controller_rate =
-            declare_and_get_parameter<int>(*this, "controller_rate");
+        const auto motor_id = declare_and_get_parameter<String>(*this, "motor_id");
+        const auto controller_rate = declare_and_get_parameter<int>(*this, "controller_rate");
         output_mode_ = declare_and_get_parameter<String>(*this, "output_mode");
         acc_max_ = declare_and_get_parameter<double>(*this, "acc_max");
         speed_min_ = declare_and_get_parameter<double>(*this, "speed_min");
 
-        // load all robot parameters
-        // robot_params_ = RobotParameters(this);
-
         if (output_mode_ == "speed") {
-            get_sensor_value_ = [](VescStateStampedMsg &msg) -> double {
-                return msg.state.speed;
-            };
+            get_sensor_value_ = [](VescStateStampedMsg &msg) -> double { return msg.state.speed; };
             get_target_value_ = [](Float64Msg &msg) -> double {
                 double target_velocity = msg.data;
-                // do conversion from m/s to eRPM
-                double wheel_circumference = 0.15 * 2 * M_PI;
-                double gear_ratio = 1.0 / 4.0;
-                double motor_poles = 14.0;
-                double erpm_per_sec =
-                    target_velocity /
-                    (wheel_circumference * gear_ratio * motor_poles / 2.0);
+                // do conversion from linear m/s to eRPM
+                double wheel_circumference = robot_params_.wheel_diameter * M_PI;
+                double rpm = target_velocity / (wheel_circumference * robot_params.gear_ratio);
+                double erpm = rpm * robot_params_.motor_pole_pairs * 2;
 
-                return erpm_per_sec;
-                // return target_velocity;
+                return erpm;
             };
 
             // pid values from param
@@ -133,14 +119,11 @@ class MotorController : public ros2::Node {
             max_output_ = declare_and_get_parameter<double>(*this, "speed_max");
 
         } else if (output_mode_ == "current") {
-            get_sensor_value_ = [](VescStateStampedMsg &msg) {
-                return msg.state.current_motor;
-            };
+            get_sensor_value_ = [](VescStateStampedMsg &msg) { return msg.state.current_motor; };
             get_target_value_ = [](Float64Msg &msg) {
                 double target_velocity = msg.data;
                 // do conversion from m/s to current (amps)
-                double target_current =
-                    target_velocity / 10.0; // placeholder conversion factor
+                double target_current = target_velocity / 10.0; // placeholder conversion factor
 
                 return target_current;
             };
@@ -151,14 +134,12 @@ class MotorController : public ros2::Node {
             pid_.d = declare_and_get_parameter<double>(*this, "pid_current.kd");
 
             // max output from param
-            max_output_ =
-                declare_and_get_parameter<double>(*this, "current_max");
+            max_output_ = declare_and_get_parameter<double>(*this, "current_max");
 
         } else {
-            RCLCPP_WARN_ONCE(
-                this->get_logger(),
-                "output_mode_ != \"speed\" | \"current\", output_mode_: %s",
-                output_mode_.c_str());
+            RCLCPP_WARN_ONCE(this->get_logger(),
+                             "output_mode_ != \"speed\" | \"current\", output_mode_: %s",
+                             output_mode_.c_str());
             ros2::shutdown();
         }
 
@@ -168,21 +149,17 @@ class MotorController : public ros2::Node {
         const String diff_drive_topic =
             format_topic_path(motor_prefix, "target", "motor", output_mode_);
 
-        RCLCPP_INFO(this->get_logger(),
-                    "diff_drive_topic: " + green(diff_drive_topic));
+        RCLCPP_INFO(this->get_logger(), "diff_drive_topic: " + green(diff_drive_topic));
 
         diff_drive_sub_ = this->create_subscription<Float64Msg>(
-            diff_drive_topic.c_str(), 10, [this](Float64Msg::UniquePtr msg) {
-                this->target_ = this->get_target_value_(*msg);
-            });
+            diff_drive_topic.c_str(), 10,
+            [this](Float64Msg::UniquePtr msg) { this->target_ = this->get_target_value_(*msg); });
 
-        const String state_topic =
-            format_topic_path(motor_prefix, "sensors", "core");
+        const String state_topic = format_topic_path(motor_prefix, "sensors", "core");
         RCLCPP_INFO(this->get_logger(), "state_topic: " + green(state_topic));
 
         vesc_state_sub_ = this->create_subscription<VescStateStampedMsg>(
-            state_topic.c_str(), 10,
-            [this](VescStateStampedMsg::UniquePtr msg) {
+            state_topic.c_str(), 10, [this](VescStateStampedMsg::UniquePtr msg) {
                 this->vesc_state_ = *msg;
                 actual_buffer_.push_back(this->get_sensor_value_(*msg));
                 actual_ = actual_buffer_.mean();
@@ -192,20 +169,17 @@ class MotorController : public ros2::Node {
         const String motor_topic =
             format_topic_path(motor_prefix, "commands", "motor", output_mode_);
         RCLCPP_INFO(this->get_logger(), "motor_topic: " + green(motor_topic));
-        motor_pub_ = this->create_publisher<Float64Msg>(
-            motor_topic, ros2::QoS(10).reliable());
+        motor_pub_ = this->create_publisher<Float64Msg>(motor_topic, ros2::QoS(10).reliable());
 
-        const String status_topic =
-            format_topic_path(motor_prefix, "controller", "status");
+        const String status_topic = format_topic_path(motor_prefix, "controller", "status");
         RCLCPP_INFO(this->get_logger(), "status_topic: " + green(status_topic));
-        status_pub_ = this->create_publisher<MotorControllerStatusMsg>(
-            status_topic, ros2::QoS(10).reliable());
+        status_pub_ = this->create_publisher<MotorControllerStatusMsg>(status_topic,
+                                                                       ros2::QoS(10).reliable());
 
         // controller rate timer
         const auto cooldown = std::chrono::milliseconds(1000 / controller_rate);
         // perform a control step at the controller rate
-        timer_control_ =
-            this->create_wall_timer(cooldown, [this]() { step(); });
+        timer_control_ = this->create_wall_timer(cooldown, [this]() { step(); });
 
         // publish control and status at the controller rate
         timer_publish_ = this->create_wall_timer(cooldown, [this]() {
@@ -217,8 +191,7 @@ class MotorController : public ros2::Node {
             motor_pub_->publish(msg_control_);
         });
 
-        timer_status_ =
-            this->create_wall_timer(cooldown, [this]() { pub_status_(); });
+        timer_status_ = this->create_wall_timer(cooldown, [this]() { pub_status_(); });
     }
 
     void step() {
