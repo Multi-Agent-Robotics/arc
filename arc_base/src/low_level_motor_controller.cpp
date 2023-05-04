@@ -235,12 +235,18 @@ class MotorController : public ros2::Node {
         control_pid_.d = pid_.d * (error_prev_ - error_) / delta_time;
 
         output_ = control_pid_.p + control_pid_.i + control_pid_.d;
-        double delta_output = output_ - output_prev_;
+        double delta_output = output_ - actual_; // output_prev_;
         // calculate max allowable change in this timeframe
         double delta_acc_max = acc_max_ * delta_time;
         // limit the output to the max allowable change
         if (std::abs(delta_output) > delta_acc_max) {
-            output_ = output_prev_ + std::copysign(delta_acc_max, delta_output);
+            // output_ = output_prev_ + std::copysign(delta_acc_max,
+            // delta_output);
+
+            // using the actual measurement here to ensure that the delta given
+            // is ALWAYS within the max allowable change from the motor's
+            // current state
+            output_ = actual_ + std::copysign(delta_acc_max, delta_output);
         }
 
         // The motor will NOT rotate when the output is between [-900, 900]
