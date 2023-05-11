@@ -84,7 +84,7 @@ def generate_launch_description():
         )
     )
     # include vesc launch file
-    vesc = IncludeLaunchDescription(
+    vescs = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
                 get_package_share_directory('arc_bringup'),
@@ -162,7 +162,7 @@ def generate_launch_description():
         # vesc_launch,
         rosbridge_server,
         ds4_twist,
-        vesc,
+        vescs,
         twist_to_diff_drive,
         low_level_motor_controller_right,
         low_level_motor_controller_left,

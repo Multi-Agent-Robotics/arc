@@ -7,6 +7,7 @@ from launch_ros.substitutions import FindPackageShare
 
 import os
 
+
 def expand(path: str) -> str:
     expanded_path = os.path.expanduser(path)
     # assert that the path exists
@@ -20,9 +21,11 @@ def gen_static_transform_publisher(x: float, y: float, z: float, qx: float, qy: 
     return Node(
         package="tf2_ros",
         executable="static_transform_publisher",
-        arguments=[str(x), str(y), str(z), str(qx), str(qy), str(qz), str(q0), frame_id, child_frame_id],
+        arguments=[str(x), str(y), str(z), str(qx), str(
+            qy), str(qz), str(q0), frame_id, child_frame_id],
         output='screen'
     )
+
 
 def generate_launch_description() -> LaunchDescription:
     rectify = 'true'
@@ -32,8 +35,10 @@ def generate_launch_description() -> LaunchDescription:
         executable="stereo-inertial",
         output='screen',
         arguments=[
-            expand('~/multi-agent-robotics/ORB-SLAM3-STEREO-FIXED/vocabulary/ORBvoc.txt'),
-            expand('~/ros2_ws/src/orbslam3/config/stereo-inertial/EuRoC.yaml'), 
+            # TODO: do not hardcode abs path
+            expand(
+                '~/multi-agent-robotics/ORB-SLAM3-STEREO-FIXED/vocabulary/ORBvoc.txt'),
+            expand('~/ros2_ws/src/orbslam3/orbslam3/config/stereo-inertial/EuRoC.yaml'),
             rectify,
             equalize
         ]
@@ -49,31 +54,30 @@ def generate_launch_description() -> LaunchDescription:
         # output='screen'
     )
 
-
-    # TODO: do not hardcode abs path
-    path_to_rviz2_config = expand('~/ros2_ws/src/rnd-lugbot/rviz2/orbslam3-ros2-euroc-dataset.rviz')
-    rviz2 = Node(
-        package='rviz2',
-        namespace='',
-        executable='rviz2',
-        name='rviz2',
-        arguments=['-d', path_to_rviz2_config],
-    )
+    # # TODO: do not hardcode abs path
+    # path_to_rviz2_config = expand('~/ros2_ws/src/rnd-lugbot/rviz2/orbslam3-ros2-euroc-dataset.rviz')
+    # rviz2 = Node(
+    #     package='rviz2',
+    #     namespace='',
+    #     executable='rviz2',
+    #     name='rviz2',
+    #     arguments=['-d', path_to_rviz2_config],
+    # )
 
     # starts a websocket server on port 9090
     # used by Foxglove Studio to visualize the data
     rosbridge_websocker_server = ExecuteProcess(
-        cmd=['ros2', 'launch', 'rosbridge_server', 'rosbridge_websocket_launch.xml'],
+        cmd=['ros2', 'launch', 'rosbridge_server',
+             'rosbridge_websocket_launch.xml'],
     )
 
     return LaunchDescription([
         gen_static_transform_publisher(0, 0, 0, 0, 0, 0, 1, 'map', 'camera'),
         play_euroc_dataset,
         orbslam3,
-        rviz2,
+        #        rviz2,
         rosbridge_websocker_server
     ])
-
 
 
 OnShutdown(on_shutdown=[LogInfo(msg=['Launch file is shutting down'])])
