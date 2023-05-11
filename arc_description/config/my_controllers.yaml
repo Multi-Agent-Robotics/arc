@@ -1,0 +1,25 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 30
+    use_sim_time: true
+
+    diff_controller:
+      type: diff_drive_controller/DiffDriveController
+
+    joint_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+diff_controller:
+  ros__parameters:
+    publish_rate: 50.0
+
+    base_frame_id: base_link
+
+    left_wheel_joint:
+      - Revolute_left
+    right_wheel_joint:
+      - Revolute_right
+    wheel_separation: 0.224
+    wheel_radius: 0.150
+
+    use_stamped_vel: false

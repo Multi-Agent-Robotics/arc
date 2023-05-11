@@ -23,9 +23,10 @@ class RadPerSecNode : public rclcpp::Node {
                 _vesc_state = *msg;
 
                 Float64Msg msg_rad_per_sec;
-                double ERPM = _vesc_state.state.speed;
-                msg_rad_per_sec.data =
-                    (ERPM / _robot_params.motor_pole_pairs) * (2 * M_PI / 60); // rad/s
+                const double ERPM = _vesc_state.state.speed;
+                const double pole_pairs =
+                    _robot_params.motor_pole_pairs; // number of pole pairs divided by 2
+                msg_rad_per_sec.data = (ERPM / pole_pairs) * (2 * M_PI / 60); // rad/s
                 _pub_rad_per_sec->publish(msg_rad_per_sec);
             });
     }
