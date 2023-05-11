@@ -83,5 +83,6 @@
         "typeinfo": "cpp",
         "variant": "cpp"
     },
-    "cmake.configureOnOpen": false
+    "cmake.configureOnOpen": false,
+    "cmake.sourceDirectory": "/home/orin/ros2_ws/src/arc/arc"
 }

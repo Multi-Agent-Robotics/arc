@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.5)
 project(arc_base)
 
+# If clang is installed on the system, use it
+# as the error messages are much more readable than gcc's
+if(EXISTS "/usr/bin/clang++")
+  set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
+  message(STATUS "Using clang++ compiler")
+endif()
+
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
@@ -23,7 +30,7 @@ include_directories(include)
 
 set(SHARED_AMENT_DEPS rclcpp arc_msgs vesc_msgs geometry_msgs std_msgs nav_msgs tf2_geometry_msgs tf2_ros tf2_eigen tf2_msgs tf2)
 foreach(ament_deps ${SHARED_AMENT_DEPS})
-    find_package(${ament_deps} REQUIRED) 
+    find_package(${ament_deps} REQUIRED)
 endforeach()
 
 
@@ -45,10 +52,15 @@ add_executable(pos_controller src/pos_controller.cpp)
 target_include_directories(pos_controller PRIVATE src)
 ament_target_dependencies(pos_controller ${SHARED_AMENT_DEPS})
 
+add_executable(motor_erpm_to_rad_per_sec_node src/motor_erpm_to_rad_per_sec_node.cpp)
+target_include_directories(motor_erpm_to_rad_per_sec_node PRIVATE src)
+ament_target_dependencies(motor_erpm_to_rad_per_sec_node ${SHARED_AMENT_DEPS})
+
 install(TARGETS
   twist_to_diff_drive_node
   low_level_motor_controller
   pos_controller
+  motor_erpm_to_rad_per_sec_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
