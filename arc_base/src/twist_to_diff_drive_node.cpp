@@ -24,10 +24,10 @@ class DifferentialDrive {
     double target_velocity_; // m/s
 
   public:
-    DifferentialDrive(double wheel_base, double wheel_radius, double gearing)
-        : wheel_base_{wheel_base}, wheel_radius_{wheel_radius} {
+    DifferentialDrive(double wheel_base, double wheel_radius, double gearing, double target_velocity)
+        : wheel_base_{wheel_base}, wheel_radius_{wheel_radius}, target_velocity_(target_velocity) {
 
-        target_velocity_ = declare_and_get_parameter<double>(*this, "target_velocity");
+        // target_velocity_ = declare_and_get_parameter<double>(*this, "target_velocity");
     }
 
     // Calculate the relations between the left and right wheel velocities in
@@ -70,7 +70,9 @@ class DifferentialDrive {
 class TwistToDiffDriveNode : public rclcpp::Node {
   public:
     TwistToDiffDriveNode()
-        : Node("twist_to_diff_drive_node"), diff_drive_model_(0.224, 0.15, 0.25) {
+        : Node("twist_to_diff_drive_node"),
+         target_velocity_{declare_and_get_parameter<double>(*this, "target_velocity")},
+         diff_drive_model_(0.224, 0.15, 0.25, target_velocity_) {
         // Create a DifferentialDrive object with a wheel base of 224mm and a
         // wheel radius of 150mm
 
@@ -115,11 +117,12 @@ class TwistToDiffDriveNode : public rclcpp::Node {
     Subscriber<TwistStampedMsg>::SharedPtr twist_sub_;
     Publisher<Float64Msg>::SharedPtr motor_speed_left_pub_;
     Publisher<Float64Msg>::SharedPtr motor_speed_right_pub_;
-    DifferentialDrive diff_drive_model_;
 
     double controller_rate_;
     double left_motor_speed_;
     double right_motor_speed_;
+    double target_velocity_;
+    DifferentialDrive diff_drive_model_;
 
     void twist_cb(const TwistStampedMsg::SharedPtr msg) {
         // RCLCPP_INFO(this->get_logger(), "Received twist:\ntwist.linear.x =

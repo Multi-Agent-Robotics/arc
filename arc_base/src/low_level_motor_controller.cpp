@@ -95,9 +95,11 @@ class MotorController : public ros2::Node {
             double target_velocity = msg.data;
             // do conversion from linear m/s to eRPM
             double wheel_circumference = robot_params_.wheel_diameter * M_PI;
-            double motor_turns_per_meter = 1.0 / wheel_circumference / robot_params_.gear_ratio;
+            double motor_turns_per_meter = 1.0 / wheel_circumference * robot_params_.gear_ratio;
             double rpm = target_velocity * motor_turns_per_meter * 60.0;
             double erpm = rpm * robot_params_.motor_pole_pairs * 2;
+            std::fprintf(stderr, "wc = %.3f\tmtpm = %.3f\trpm = %.2f\terpm = %.0f", wheel_circumference, motor_turns_per_meter, rpm, erpm);
+                RCLCPP_INFO(this->get_logger(), "wc = %.3f\tmtpm = %.3f\trpm = %.2f\terpm = %.0f", wheel_circumference, motor_turns_per_meter, rpm, erpm);
 
             return erpm;
         };
