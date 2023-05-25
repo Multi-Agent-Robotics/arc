@@ -95,16 +95,17 @@ class MotorController : public ros2::Node {
             double target_velocity = msg.data;
             // do conversion from linear m/s to eRPM
             double wheel_circumference = robot_params_.wheel_diameter * M_PI;
-            double rpm = target_velocity / (wheel_circumference / robot_params_.gear_ratio);
+            double motor_turns_per_meter = 1.0 / wheel_circumference / robot_params_.gear_ratio;
+            double rpm = target_velocity * motor_turns_per_meter * 60.0;
             double erpm = rpm * robot_params_.motor_pole_pairs * 2;
 
             return erpm;
         };
 
         // pid values from param
-        pid_.p = declare_and_get_parameter<double>(*this, "pid_speed.kp");
-        pid_.i = declare_and_get_parameter<double>(*this, "pid_speed.ki");
-        pid_.d = declare_and_get_parameter<double>(*this, "pid_speed.kd");
+        pid_.p = declare_and_get_parameter<double>(*this, "pid.kp");
+        pid_.i = declare_and_get_parameter<double>(*this, "pid.ki");
+        pid_.d = declare_and_get_parameter<double>(*this, "pid.kd");
 
         const String motor_prefix = "motor_" + motor_id;
 

@@ -21,10 +21,14 @@ class DifferentialDrive {
     double wheel_base_;
     double wheel_radius_;
     double gearing_;
+    double target_velocity_; // m/s
 
   public:
     DifferentialDrive(double wheel_base, double wheel_radius, double gearing)
-        : wheel_base_{wheel_base}, wheel_radius_{wheel_radius} {}
+        : wheel_base_{wheel_base}, wheel_radius_{wheel_radius} {
+
+        target_velocity_ = declare_and_get_parameter<double>(*this, "target_velocity");
+    }
 
     // Calculate the relations between the left and right wheel velocities in
     // [-1, 1]
@@ -35,10 +39,10 @@ class DifferentialDrive {
         double wheel_right = linear_velocity + angular_velocity;
 
         // constrain the wheel velocities to [-1, 1]
-        double max_wheel_velocity = std::max(std::abs(wheel_left), std::abs(wheel_right));
-        if (max_wheel_velocity > 1) {
-            wheel_left /= max_wheel_velocity;
-            wheel_right /= max_wheel_velocity;
+        double max_wheel_relation = std::max(std::abs(wheel_left), std::abs(wheel_right));
+        if (max_wheel_relation > 1) {
+            wheel_left /= max_wheel_relation;
+            wheel_right /= max_wheel_relation;
         }
 
         return std::make_pair(wheel_left, wheel_right);
@@ -56,8 +60,8 @@ class DifferentialDrive {
         // double wheel_right_velocity =
         //     this->target_velocity_ * wheel_right_relation / (wheel_radius_ * gearing_);
 
-        double wheel_left_velocity = wheel_left_relation * 100;
-        double wheel_right_velocity = wheel_right_relation * 100;
+        double wheel_left_velocity = target_velocity_ * wheel_left_relation;
+        double wheel_right_velocity = target_velocity_ * wheel_right_relation;
 
         return std::make_pair(wheel_left_velocity, wheel_right_velocity);
     }
