@@ -75,6 +75,7 @@ class MotorController : public ros2::Node {
         msg_status_.pid.i = control_pid_.i;
         msg_status_.pid.d = control_pid_.d;
         msg_status_.output = output_;
+        msg_status_.header.stamp = this->get_clock()->now();
 
         status_pub_->publish(msg_status_);
     }
@@ -98,8 +99,8 @@ class MotorController : public ros2::Node {
             double motor_turns_per_meter = 1.0 / wheel_circumference * robot_params_.gear_ratio;
             double rpm = target_velocity * motor_turns_per_meter * 60.0;
             double erpm = rpm * robot_params_.motor_pole_pairs * 2;
-            std::fprintf(stderr, "wc = %.3f\tmtpm = %.3f\trpm = %.2f\terpm = %.0f", wheel_circumference, motor_turns_per_meter, rpm, erpm);
-                RCLCPP_INFO(this->get_logger(), "wc = %.3f\tmtpm = %.3f\trpm = %.2f\terpm = %.0f", wheel_circumference, motor_turns_per_meter, rpm, erpm);
+            // std::fprintf(stderr, "wc = %.3f\tmtpm = %.3f\trpm = %.2f\terpm = %.0f", wheel_circumference, motor_turns_per_meter, rpm, erpm);
+            // RCLCPP_INFO(this->get_logger(), "wc = %.3f\tmtpm = %.3f\trpm = %.2f\terpm = %.0f", wheel_circumference, motor_turns_per_meter, rpm, erpm);
 
             return erpm;
         };
