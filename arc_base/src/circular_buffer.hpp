@@ -46,7 +46,7 @@ template <typename T, std::size_t N> class CircularBuffer {
 
     auto get_underlying_array() -> const std::array<T, N> & { return buffer; }
 
-    auto mean() -> double {
+    auto mean() const -> double {
         if (count == 0) {
             return 0.0;
         }

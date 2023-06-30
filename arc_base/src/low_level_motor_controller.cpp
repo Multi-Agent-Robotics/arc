@@ -3,6 +3,8 @@
 
 #include "arc_base/utils.hpp"
 #include "arc_msgs/msg/motor_controller_status.hpp"
+#include "arc_msgs/msg/moving_average_test.hpp"
+
 #include "circular_buffer.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "std_msgs/msg/float64.hpp"
@@ -24,6 +26,7 @@ using TwistStampedMsg = geometry_msgs::msg::TwistStamped;
 using VescStateStampedMsg = vesc_msgs::msg::VescStateStamped;
 using Float64Msg = std_msgs::msg::Float64;
 using MotorControllerStatusMsg = arc_msgs::msg::MotorControllerStatus;
+using MovingAverageTestMsg = arc_msgs::msg::MovingAverageTest;
 
 class MotorController : public ros2::Node {
   private:
@@ -32,6 +35,8 @@ class MotorController : public ros2::Node {
     PID control_pid_;
     // buffer for moving average
     CircularBuffer<double, 20> actual_buffer_;
+    CircularBuffer<double, 10> actual_buffer_10_;
+    CircularBuffer<double, 5> actual_buffer_5_;
     // robot parameters
     RobotParameters robot_params_;
 
@@ -63,6 +68,9 @@ class MotorController : public ros2::Node {
     Subscriber<VescStateStampedMsg>::SharedPtr vesc_state_sub_;
     Subscriber<Float64Msg>::SharedPtr diff_drive_sub_;
     Publisher<Float64Msg>::SharedPtr motor_pub_;
+    Publisher<Float64Msg>::SharedPtr buffer5_pub_;
+    Publisher<Float64Msg>::SharedPtr buffer10_pub_;
+    Publisher<MovingAverageTestMsg>::SharedPtr moving_average_test_pub_;
     Publisher<MotorControllerStatusMsg>::SharedPtr status_pub_;
 
     void pub_status_() {
@@ -128,6 +136,9 @@ class MotorController : public ros2::Node {
             state_topic.c_str(), 10, [this](VescStateStampedMsg::UniquePtr msg) {
                 this->vesc_state_ = *msg;
                 actual_buffer_.push_back(this->get_sensor_value_(*msg));
+                actual_buffer_10_.push_back(this->get_sensor_value_(*msg));
+                actual_buffer_5_.push_back(this->get_sensor_value_(*msg));
+
                 actual_ = actual_buffer_.mean();
             });
 
@@ -141,6 +152,21 @@ class MotorController : public ros2::Node {
         status_pub_ = this->create_publisher<MotorControllerStatusMsg>(status_topic,
                                                                        ros2::QoS(10).reliable());
 
+        const String buffer5_topic = format_topic_path(motor_prefix, "buffer5");
+        RCLCPP_INFO(this->get_logger(), "buffer5: " + green(buffer5_topic));
+        buffer5_pub_ = this->create_publisher<Float64Msg>(buffer5_topic,
+                                                                       ros2::QoS(10).reliable());
+
+        const String buffer10_topic = format_topic_path(motor_prefix, "buffer10");
+        RCLCPP_INFO(this->get_logger(), "buffer10: " + green(buffer10_topic));
+        buffer10_pub_ = this->create_publisher<Float64Msg>(buffer10_topic,
+                                                                       ros2::QoS(10).reliable());
+
+        const String moving_average_test_topic = format_topic_path(motor_prefix, "moving_average_test");
+        RCLCPP_INFO(this->get_logger(), "moving_average_test: " + green(moving_average_test_topic));
+        moving_average_test_pub_ = this->create_publisher<MovingAverageTestMsg>(moving_average_test_topic,
+                                                                       ros2::QoS(10).reliable());
+
         // controller rate timer
         const auto cooldown = std::chrono::milliseconds(1000 / controller_rate);
         // perform a control step at the controller rate
@@ -152,7 +178,28 @@ class MotorController : public ros2::Node {
             motor_pub_->publish(msg_control_);
         });
 
-        timer_status_ = this->create_wall_timer(cooldown, [this]() { pub_status_(); });
+        timer_status_ = this->create_wall_timer(cooldown, [this]() {
+            pub_status_();
+            {
+                auto msg = MovingAverageTestMsg();
+                msg.header.stamp = this->get_clock()->now();
+                msg.mean5 = this->actual_buffer_5_.mean();
+                msg.mean10 = this->actual_buffer_10_.mean();
+                msg.mean20 = this->actual_;
+                msg.groundtruth = this->get_sensor_value_(this->vesc_state_);
+                this->moving_average_test_pub_->publish(msg);
+            }
+            // {
+            //     auto msg = Float64Msg();
+            //     msg.data = this->actual_buffer_5_.mean();
+            //     this->buffer5_pub_->publish(msg);
+            // }
+            // {
+            //     auto msg = Float64Msg();
+            //     msg.data = this->actual_buffer_10_.mean();
+            //     this->buffer10_pub_->publish(msg);
+            // }
+     });
     }
 
     void step() {
